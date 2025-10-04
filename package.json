@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "generate-db-url": "node scripts/generate-database-url.js"
+    "generate-db-url": "node scripts/generate-database-url.js",
+    "setup-db": "node scripts/setup-supabase-database.js"
   },
   "dependencies": {
     "next": "14.0.4",
