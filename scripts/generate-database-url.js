@@ -7,10 +7,6 @@ function generateDatabaseUrl() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const password = process.env.SUPABASE_DB_PASSWORD;
   
-  console.log('Environment Variables Check:');
-  console.log('SUPABASE_URL:', supabaseUrl ? '✅ gesetzt' : '❌ nicht gesetzt');
-  console.log('SUPABASE_DB_PASSWORD:', password ? '✅ gesetzt' : '❌ nicht gesetzt');
-  
   if (supabaseUrl && password) {
     // Prüfe ob es Platzhalter-Werte sind
     if (supabaseUrl.includes('your-project-ref') || password.includes('your-database-password')) {
@@ -26,15 +22,12 @@ function generateDatabaseUrl() {
     // Generiere DATABASE_URL (Transaction Pooler für Vercel)
     const databaseUrl = `postgresql://postgres.${projectRef}:${password}@aws-1-eu-central-1.pooler.supabase.com:6543/postgres`;
     
-    console.log('✅ Generierte DATABASE_URL aus Environment Variables:', databaseUrl);
-    
     // Setze DATABASE_URL als Environment Variable für Prisma
     process.env.DATABASE_URL = databaseUrl;
     
     // Schreibe DATABASE_URL in eine temporäre .env Datei für Prisma
     const envPath = path.join(process.cwd(), '.env');
     fs.writeFileSync(envPath, `DATABASE_URL="${databaseUrl}"\n`);
-    console.log('✅ DATABASE_URL wurde in .env geschrieben für Prisma');
     
     return databaseUrl;
   }
@@ -68,8 +61,6 @@ function generateDatabaseUrl() {
   // Generiere DATABASE_URL
   const databaseUrl = `postgresql://postgres:${passwordFromFile}@db.${projectRef}.supabase.co:5432/postgres`;
   
-  console.log('Generierte DATABASE_URL aus .env:', databaseUrl);
-  
   // Setze DATABASE_URL als Environment Variable für Prisma
   process.env.DATABASE_URL = databaseUrl;
   
@@ -85,9 +76,7 @@ function generateDatabaseUrl() {
     }
     
     fs.writeFileSync(envPath, envFile);
-    console.log('DATABASE_URL wurde in .env aktualisiert');
   } else {
-    console.log('Erstelle .env Datei...');
     fs.writeFileSync(envPath, `DATABASE_URL="${databaseUrl}"\n`);
   }
   

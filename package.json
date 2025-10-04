@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/generate-database-url.js && prisma generate && prisma migrate deploy && next build",
+    "build": "node scripts/generate-database-url.js && next build",
+    "build:full": "prisma generate && prisma migrate deploy && npm run build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
