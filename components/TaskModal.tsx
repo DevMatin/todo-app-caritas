@@ -74,7 +74,7 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
           title: task.title,
           description: task.description || '',
           priority: convertPriority(task.priority),
-          status: task.status,
+          status: task.status as 'offen' | 'in_bearbeitung' | 'erledigt',
           deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '',
           comment: task.comment || '',
         })
@@ -115,7 +115,7 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
       const cleanedData = {
         title: formData.title.trim(),
         description: formData.description?.trim() || undefined,
-        priority: convertPriorityToOld(formData.priority),
+        priority: convertPriorityToOld(formData.priority) as any,
         status: formData.status,
         deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
         comment: formData.comment?.trim() || undefined,

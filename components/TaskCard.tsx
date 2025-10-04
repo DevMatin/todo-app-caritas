@@ -90,8 +90,8 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
     }
   }
 
-  const StatusIcon = statusConfig[task.status].icon
-  const deadlineInfo = task.deadline ? formatDeadline(task.deadline) : null
+  const StatusIcon = statusConfig[task.status as keyof typeof statusConfig].icon
+  const deadlineInfo = task.deadline ? formatDeadline(task.deadline.toISOString()) : null
 
   return (
     <Card className={`hover:shadow-md transition-shadow ${task.status === 'erledigt' ? 'opacity-70' : ''}`}>
@@ -100,11 +100,11 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
           <div className="flex-1">
             <CardTitle className={`text-lg mb-2 ${task.status === 'erledigt' ? 'line-through text-gray-500' : ''}`}>{task.title}</CardTitle>
             <div className="flex flex-wrap gap-2 mb-2">
-              <Badge className={statusConfig[task.status].color}>
+              <Badge className={statusConfig[task.status as keyof typeof statusConfig].color}>
                 <StatusIcon className="h-3 w-3 mr-1" />
-                {statusConfig[task.status].label}
+                {statusConfig[task.status as keyof typeof statusConfig].label}
               </Badge>
-              <Badge className={priorityConfig[task.priority]}>
+              <Badge className={priorityConfig[task.priority as keyof typeof priorityConfig]}>
                 {task.priority}
               </Badge>
             </div>
@@ -150,7 +150,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-4 w-4 text-gray-500" />
             <span className="text-sm text-gray-600">
-              Fällig: {formatDate(task.deadline)}
+              Fällig: {formatDate(task.deadline.toISOString())}
             </span>
             {deadlineInfo && (
               <span className={`text-sm font-medium ${deadlineInfo.color}`}>
@@ -204,12 +204,12 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
         <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            Erstellt: {formatDate(task.created_at)}
+            Erstellt: {formatDate(task.createdAt.toISOString())}
           </div>
-          {task.updated_at !== task.created_at && (
+          {task.updatedAt !== task.createdAt && (
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Aktualisiert: {formatDate(task.updated_at)}
+              Aktualisiert: {formatDate(task.updatedAt.toISOString())}
             </div>
           )}
         </div>

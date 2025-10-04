@@ -1,4 +1,4 @@
-# DEFINITIVE Lösung für Portainer - ohne npm run build
+# Optimiertes Dockerfile für Portainer - bcrypt Problem behoben
 FROM node:18-alpine
 
 # Install system dependencies
@@ -18,7 +18,10 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js direkt - KEIN npm run build!
+# Rebuild bcrypt for Alpine Linux
+RUN npm rebuild bcrypt --build-from-source
+
+# Build Next.js direkt
 RUN npx next build
 
 # Expose port

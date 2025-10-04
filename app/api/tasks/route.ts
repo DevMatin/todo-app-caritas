@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
-import { Task, Priority, Status } from '@prisma/client'
+import { Task } from '@prisma/client'
 import { sendN8nEvent, createTaskData } from '@/lib/webhook'
 
 // GET /api/tasks - Alle Aufgaben des eingeloggten Users abrufen
