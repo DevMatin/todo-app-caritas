@@ -20,16 +20,24 @@ Diese Anleitung führt Sie Schritt für Schritt durch das Deployment Ihrer Next.
 6. Wählen Sie eine Region (z.B. `Frankfurt` für Deutschland)
 7. Klicken Sie auf **"Create new project"**
 
-### 1.2 Datenbank-URL kopieren
+### 1.2 Supabase-Keys kopieren
 1. Warten Sie, bis das Projekt erstellt ist (ca. 2-3 Minuten)
-2. Gehen Sie zu **Settings** → **Database**
-3. Scrollen Sie zu **"Connection string"**
-4. Kopieren Sie die **URI** (beginnt mit `postgresql://`)
-5. **Wichtig**: Ersetzen Sie `[YOUR-PASSWORD]` mit dem Passwort, das Sie bei der Erstellung gewählt haben
+2. Gehen Sie zu **Settings** → **API**
+3. Kopieren Sie folgende Werte:
+   - **Project URL** → `SUPABASE_URL`
+   - **anon public** → `SUPABASE_ANON_KEY`
+   - **service_role secret** → `SUPABASE_SERVICE_ROLE_KEY`
+4. Gehen Sie zu **Settings** → **Database**
+5. Kopieren Sie das **Database Password** → `SUPABASE_DB_PASSWORD`
+6. **Hinweis**: Die `DATABASE_URL` wird automatisch aus den Supabase-Keys generiert!
 
 **Beispiel:**
 ```
-postgresql://postgres:ihr-passwort@db.abcdefghijklmnop.supabase.co:5432/postgres
+SUPABASE_URL="https://abcdefghijklmnop.supabase.co"
+SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY5ODc2MjQwMCwiZXhwIjoyMDE0MzM4NDAwfQ.example-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFiY2RlZmdoaWprbG1ub3AiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjk4NzYyNDAwLCJleHAiOjIwMTQzMzg0MDB9.example-service-role-key"
+SUPABASE_DB_PASSWORD="ihr-datenbank-passwort"
+# DATABASE_URL wird automatisch generiert!
 ```
 
 ## 🔐 Schritt 2: NEXTAUTH_SECRET generieren
@@ -74,9 +82,14 @@ Besuchen Sie [generate-secret.vercel.app](https://generate-secret.vercel.app/32)
 
 | Name | Value | Beschreibung |
 |------|-------|--------------|
-| `DATABASE_URL` | `postgresql://postgres:ihr-passwort@db.abcdefghijklmnop.supabase.co:5432/postgres` | Supabase Connection String |
+| `SUPABASE_URL` | `https://abcdefghijklmnop.supabase.co` | Supabase Project URL |
+| `SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | Supabase Anon Public Key |
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | Supabase Service Role Secret |
+| `SUPABASE_DB_PASSWORD` | `ihr-datenbank-passwort` | Supabase Database Password |
 | `NEXTAUTH_SECRET` | `ihr-generierter-secret-key` | Generierter Authentifizierungs-Schlüssel |
 | `NEXTAUTH_URL` | `https://ihr-projekt-name.vercel.app` | Ihre Vercel-URL (wird automatisch gesetzt) |
+
+**Hinweis**: Die `DATABASE_URL` wird automatisch aus den Supabase-Keys generiert!
 
 ### 4.2 Optional: Webhook-Variablen
 Falls Sie n8n-Integration nutzen möchten:

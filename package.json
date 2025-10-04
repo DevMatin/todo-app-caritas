@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "node scripts/generate-database-url.js && prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "generate-db-url": "node scripts/generate-database-url.js"
   },
   "dependencies": {
     "next": "14.0.4",
@@ -26,7 +27,8 @@
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "tailwind-merge": "^2.0.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "@supabase/supabase-js": "^2.38.0"
   },
   "devDependencies": {
     "typescript": "^5",
