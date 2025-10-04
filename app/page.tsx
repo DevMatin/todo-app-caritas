@@ -14,16 +14,21 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [filter, setFilter] = useState<'all' | 'offen' | 'in_bearbeitung' | 'erledigt'>('all')
+  const [filter, setFilter] = useState<'today' | 'pending' | 'overdue'>('today')
 
   // Aufgaben laden
   const fetchTasks = async () => {
     try {
       const response = await fetch('/api/tasks')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
-      setTasks(data)
+      // Sicherstellen, dass data ein Array ist
+      setTasks(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Fehler beim Laden der Aufgaben:', error)
+      setTasks([]) // Leeres Array als Fallback
     } finally {
       setLoading(false)
     }
@@ -91,18 +96,30 @@ export default function HomePage() {
     }
   }
 
-  // Gefilterte Aufgaben
-  const filteredTasks = filter === 'all' 
-    ? tasks 
-    : tasks.filter(task => task.status === filter)
-
-  // Statistiken
-  const stats = {
-    total: tasks.length,
-    offen: tasks.filter(t => t.status === 'offen').length,
-    inBearbeitung: tasks.filter(t => t.status === 'in_bearbeitung').length,
-    erledigt: tasks.filter(t => t.status === 'erledigt').length,
-  }
+  // Gefilterte Aufgaben basierend auf Datum
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  // Sicherstellen, dass tasks ein Array ist
+  const safeTasks = Array.isArray(tasks) ? tasks : []
+  
+  const filteredTasks = safeTasks.filter(task => {
+    if (!task) return false
+    
+    const taskDate = new Date(task.dueDate || task.createdAt)
+    taskDate.setHours(0, 0, 0, 0)
+    
+    switch (filter) {
+      case 'today':
+        return taskDate.getTime() === today.getTime()
+      case 'pending':
+        return taskDate.getTime() > today.getTime()
+      case 'overdue':
+        return taskDate.getTime() < today.getTime()
+      default:
+        return true
+    }
+  })
 
   if (loading) {
     return (
@@ -116,134 +133,95 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Team Aufgabenverwaltung
-              </h1>
-              <p className="text-gray-600">
-                Verwalte Aufgaben für dein Handwerker-Team
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Hallo, {session?.user?.name || session?.user?.email}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => signOut()}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Abmelden
-              </Button>
+    <div className="min-h-screen bg-gray-100">
+      {/* Header mit grünem Hintergrund */}
+      <div className="bg-green-600 bg-opacity-90 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-green-700 opacity-80"></div>
+        <div className="relative px-6 py-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex justify-between items-center">
+              <h1 className="text-4xl font-bold text-white">Todo App</h1>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-green-100">
+                  Hallo, {session?.user?.name || session?.user?.email}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Abmelden
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Statistiken */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-            <div className="text-sm text-gray-600">Gesamt</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-orange-600">{stats.offen}</div>
-            <div className="text-sm text-gray-600">Offen</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{stats.inBearbeitung}</div>
-            <div className="text-sm text-gray-600">In Bearbeitung</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{stats.erledigt}</div>
-            <div className="text-sm text-gray-600">Erledigt</div>
-          </div>
+      <div className="max-w-4xl mx-auto px-6 py-6">
+        {/* Filter Buttons */}
+        <div className="flex gap-2 mb-6">
+          <Button
+            variant={filter === 'today' ? 'default' : 'outline'}
+            onClick={() => setFilter('today')}
+            className={filter === 'today' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+          >
+            Today
+          </Button>
+          <Button
+            variant={filter === 'pending' ? 'default' : 'outline'}
+            onClick={() => setFilter('pending')}
+            className={filter === 'pending' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+          >
+            Pending
+          </Button>
+          <Button
+            variant={filter === 'overdue' ? 'default' : 'outline'}
+            onClick={() => setFilter('overdue')}
+            className={filter === 'overdue' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}
+          >
+            Overdue
+          </Button>
         </div>
 
-        {/* Filter und Aktionen */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="flex gap-2">
-            <Button
-              variant={filter === 'all' ? 'default' : 'outline'}
-              onClick={() => setFilter('all')}
-              size="sm"
-            >
-              Alle
-            </Button>
-            <Button
-              variant={filter === 'offen' ? 'default' : 'outline'}
-              onClick={() => setFilter('offen')}
-              size="sm"
-            >
-              Offen
-            </Button>
-            <Button
-              variant={filter === 'in_bearbeitung' ? 'default' : 'outline'}
-              onClick={() => setFilter('in_bearbeitung')}
-              size="sm"
-            >
-              In Bearbeitung
-            </Button>
-            <Button
-              variant={filter === 'erledigt' ? 'default' : 'outline'}
-              onClick={() => setFilter('erledigt')}
-              size="sm"
-            >
-              Erledigt
-            </Button>
-          </div>
-          
+        {/* Tasks Section */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Tasks</h2>
           <Button
             onClick={() => {
               setEditingTask(null)
               setIsModalOpen(true)
             }}
-            className="ml-auto"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Neue Aufgabe
+            Add Task
           </Button>
         </div>
 
-        {/* Aufgabenliste */}
-        <div className="grid gap-4">
+        {/* Tasks Container */}
+        <div className="bg-white border border-gray-300 rounded-lg min-h-[400px] p-6">
           {filteredTasks.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">📝</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {filter === 'all' ? 'Keine Aufgaben vorhanden' : `Keine ${filter} Aufgaben`}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {filter === 'all' 
-                  ? 'Erstelle deine erste Aufgabe, um loszulegen.'
-                  : 'Es gibt derzeit keine Aufgaben mit diesem Status.'
-                }
-              </p>
-              {filter === 'all' && (
-                <Button onClick={() => setIsModalOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Erste Aufgabe erstellen
-                </Button>
-              )}
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-sm">No data to display</p>
             </div>
           ) : (
-            filteredTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={(task) => {
-                  setEditingTask(task)
-                  setIsModalOpen(true)
-                }}
-                onUpdate={updateTask}
-                onDelete={deleteTask}
-              />
-            ))
+            <div className="space-y-4">
+              {filteredTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onEdit={(task) => {
+                    setEditingTask(task)
+                    setIsModalOpen(true)
+                  }}
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
+                />
+              ))}
+            </div>
           )}
         </div>
 
