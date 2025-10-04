@@ -94,11 +94,11 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   const deadlineInfo = task.deadline ? formatDeadline(task.deadline) : null
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className={`hover:shadow-md transition-shadow ${task.status === 'erledigt' ? 'opacity-70' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{task.title}</CardTitle>
+            <CardTitle className={`text-lg mb-2 ${task.status === 'erledigt' ? 'line-through text-gray-500' : ''}`}>{task.title}</CardTitle>
             <div className="flex flex-wrap gap-2 mb-2">
               <Badge className={statusConfig[task.status].color}>
                 <StatusIcon className="h-3 w-3 mr-1" />
@@ -133,13 +133,13 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
       <CardContent className="pt-0">
         {/* Beschreibung */}
         {task.description && (
-          <p className="text-gray-700 mb-4">{task.description}</p>
+          <p className={`text-gray-700 mb-4 ${task.status === 'erledigt' ? 'line-through text-gray-500' : ''}`}>{task.description}</p>
         )}
 
         {/* Kommentar */}
         {task.comment && (
           <div className="bg-gray-50 p-3 rounded-md mb-4">
-            <p className="text-sm text-gray-700">
+            <p className={`text-sm text-gray-700 ${task.status === 'erledigt' ? 'line-through text-gray-500' : ''}`}>
               <strong>Kommentar:</strong> {task.comment}
             </p>
           </div>

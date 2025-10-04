@@ -120,7 +120,8 @@ export default function HomePage() {
   // Sicherstellen, dass tasks ein Array ist
   const safeTasks = Array.isArray(tasks) ? tasks : []
   
-  const filteredTasks = safeTasks.filter(task => {
+  // Filter-Funktion für Priorität
+  const matchesFilter = (task: Task) => {
     if (!task) return false
     
     const matches = (() => {
@@ -138,7 +139,11 @@ export default function HomePage() {
     
     console.log(`Task "${task.title}" mit Priorität "${task.priority}" für Filter "${filter}": ${matches}`)
     return matches
-  })
+  }
+  
+  // Aufteilen in aktive und erledigte Aufgaben
+  const activeTasks = safeTasks.filter(task => task && task.status !== 'erledigt' && matchesFilter(task))
+  const completedTasks = safeTasks.filter(task => task && task.status === 'erledigt' && matchesFilter(task))
 
   if (loading) {
     return (
@@ -239,17 +244,17 @@ export default function HomePage() {
           </Button>
         </div>
 
-        {/* Tasks Container */}
+        {/* Aktive Tasks Container */}
         <div className="bg-white border border-gray-300 rounded-lg min-h-[400px] p-6">
-          {filteredTasks.length === 0 ? (
+          {activeTasks.length === 0 ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-gray-500 text-sm">
-                Es sind momentan keine Aufgaben in Priorität {filter === 'prio1' ? '1' : filter === 'prio2' ? '2' : '3'} vorhanden
+                Es sind momentan keine aktiven Aufgaben in Priorität {filter === 'prio1' ? '1' : filter === 'prio2' ? '2' : '3'} vorhanden
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredTasks.map((task) => (
+              {activeTasks.map((task) => (
                 <TaskCard
                   key={task.id}
                   task={task}
@@ -264,6 +269,29 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Erledigte Aufgaben Section */}
+        {completedTasks.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Erledigte Aufgaben</h2>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <div className="space-y-4">
+                {completedTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onEdit={(task) => {
+                      setEditingTask(task)
+                      setIsModalOpen(true)
+                    }}
+                    onUpdate={updateTask}
+                    onDelete={deleteTask}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal für Aufgabe bearbeiten/erstellen */}
         <TaskModal

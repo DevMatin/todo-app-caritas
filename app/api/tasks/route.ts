@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { Task, Priority, Status } from '@prisma/client'
+import { sendN8nEvent, createTaskData } from '@/lib/webhook'
 
 // GET /api/tasks - Alle Aufgaben des eingeloggten Users abrufen
 export async function GET() {
@@ -64,6 +65,10 @@ export async function POST(request: NextRequest) {
         userId: user.id,
       }
     })
+
+    // Event an n8n senden
+    const taskData = createTaskData(task, user.email)
+    await sendN8nEvent('taskCreate', taskData)
 
     return NextResponse.json(task, { status: 201 })
   } catch (error) {

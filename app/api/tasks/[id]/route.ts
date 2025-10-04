@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
+import { sendN8nEvent, createTaskData, getChangedFields } from '@/lib/webhook'
 
 // GET /api/tasks/[id] - Einzelne Aufgabe abrufen
 export async function GET(
@@ -76,10 +77,31 @@ export async function PUT(
       return NextResponse.json({ error: 'Aufgabe nicht gefunden' }, { status: 404 })
     }
 
+    // Diff für Events bilden
+    const changedFields = getChangedFields(existingTask, body)
+    const previousStatus = existingTask.status
+
     const task = await prisma.task.update({
       where: { id: params.id },
       data: body
     })
+
+    // Events an n8n senden
+    const taskData = createTaskData(task, user.email)
+    
+    // Allgemeines Update-Event
+    await sendN8nEvent('taskUpdate', taskData, {
+      changedFields,
+      previous: existingTask
+    })
+
+    // Zusätzliches StatusChange-Event wenn Status geändert wurde
+    if (changedFields.includes('status') && previousStatus !== task.status) {
+      await sendN8nEvent('taskStatusChange', taskData, {
+        changedFields: ['status'],
+        previous: { status: previousStatus }
+      })
+    }
 
     return NextResponse.json(task)
   } catch (error) {
@@ -121,9 +143,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Aufgabe nicht gefunden' }, { status: 404 })
     }
 
+    // Task-Daten für Event vor dem Löschen erstellen
+    const taskData = createTaskData(existingTask, user.email)
+
     await prisma.task.delete({
       where: { id: params.id }
     })
+
+    // Delete-Event an n8n senden
+    await sendN8nEvent('taskDelete', taskData)
 
     return NextResponse.json({ message: 'Aufgabe erfolgreich gelöscht' })
   } catch (error) {
