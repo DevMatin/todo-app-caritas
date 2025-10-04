@@ -31,6 +31,11 @@ function generateDatabaseUrl() {
     // Setze DATABASE_URL als Environment Variable für Prisma
     process.env.DATABASE_URL = databaseUrl;
     
+    // Schreibe DATABASE_URL in eine temporäre .env Datei für Prisma
+    const envPath = path.join(process.cwd(), '.env');
+    fs.writeFileSync(envPath, `DATABASE_URL="${databaseUrl}"\n`);
+    console.log('✅ DATABASE_URL wurde in .env geschrieben für Prisma');
+    
     return databaseUrl;
   }
   
