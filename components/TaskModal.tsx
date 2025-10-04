@@ -6,7 +6,7 @@ import { Task } from '@prisma/client'
 interface TaskInsert {
   title: string
   description?: string
-  priority: 'niedrig' | 'mittel' | 'hoch' | 'dringend'
+  priority: 'prio1' | 'prio2' | 'prio3'
   status: 'offen' | 'in_bearbeitung' | 'erledigt'
   deadline?: string
   comment?: string
@@ -42,13 +42,28 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
   const [formData, setFormData] = useState<TaskInsert>({
     title: '',
     description: '',
-    priority: 'mittel',
+    priority: 'prio2',
     status: 'offen',
     deadline: '',
     comment: '',
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Priorität von altem Format zu neuem Format konvertieren
+  const convertPriority = (oldPriority: string): 'prio1' | 'prio2' | 'prio3' => {
+    switch (oldPriority) {
+      case 'hoch':
+      case 'dringend':
+        return 'prio1'
+      case 'mittel':
+        return 'prio2'
+      case 'niedrig':
+        return 'prio3'
+      default:
+        return 'prio2'
+    }
+  }
 
   // Formular zurücksetzen wenn Modal geöffnet wird
   useEffect(() => {
@@ -58,7 +73,7 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
         setFormData({
           title: task.title,
           description: task.description || '',
-          priority: task.priority,
+          priority: convertPriority(task.priority),
           status: task.status,
           deadline: task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '',
           comment: task.comment || '',
@@ -68,7 +83,7 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
         setFormData({
           title: '',
           description: '',
-          priority: 'mittel',
+          priority: 'prio2',
           status: 'offen',
           deadline: '',
           comment: '',
@@ -77,16 +92,30 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
     }
   }, [isOpen, task])
 
+  // Priorität von neuem Format zu altem Format konvertieren (für Datenbank)
+  const convertPriorityToOld = (newPriority: 'prio1' | 'prio2' | 'prio3'): string => {
+    switch (newPriority) {
+      case 'prio1':
+        return 'hoch'
+      case 'prio2':
+        return 'mittel'
+      case 'prio3':
+        return 'niedrig'
+      default:
+        return 'mittel'
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      // Formular-Daten bereinigen
-      const cleanedData: TaskInsert = {
+      // Formular-Daten bereinigen und Priorität konvertieren
+      const cleanedData = {
         title: formData.title.trim(),
         description: formData.description?.trim() || undefined,
-        priority: formData.priority,
+        priority: convertPriorityToOld(formData.priority),
         status: formData.status,
         deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
         comment: formData.comment?.trim() || undefined,
@@ -159,10 +188,9 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
                   <SelectValue placeholder="Priorität wählen" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="niedrig">Niedrig</SelectItem>
-                  <SelectItem value="mittel">Mittel</SelectItem>
-                  <SelectItem value="hoch">Hoch</SelectItem>
-                  <SelectItem value="dringend">Dringend</SelectItem>
+                  <SelectItem value="prio1">Prio 1</SelectItem>
+                  <SelectItem value="prio2">Prio 2</SelectItem>
+                  <SelectItem value="prio3">Prio 3</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -220,6 +248,8 @@ export function TaskModal({ isOpen, onClose, onSave, task }: TaskModalProps) {
             <Button
               type="submit"
               disabled={isSubmitting || !formData.title.trim()}
+              className="text-white"
+              style={{ backgroundColor: '#d21c1a' }}
             >
               {isSubmitting 
                 ? 'Speichern...' 

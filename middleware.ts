@@ -9,10 +9,19 @@ export async function middleware(request: NextRequest) {
   // Öffentliche Routen die nicht geschützt werden müssen
   const publicRoutes = ['/login', '/register', '/api/auth', '/api/register']
   
+  // API-Routen die geschützt sind aber nicht weiterleiten sollen
+  const apiRoutes = ['/api/tasks']
+  
   // Prüfen ob die Route öffentlich ist
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  const isApiRoute = apiRoutes.some(route => pathname.startsWith(route))
   
   if (isPublicRoute) {
+    return NextResponse.next()
+  }
+
+  // Für API-Routen: Weiterleiten ohne Redirect (API gibt 401 zurück)
+  if (isApiRoute) {
     return NextResponse.next()
   }
 

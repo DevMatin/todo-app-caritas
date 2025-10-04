@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
 import { prisma } from '@/lib/prisma'
 
+// @ts-ignore - NextAuth v4 compatibility issue
 const handler = NextAuth({
   providers: [
     CredentialsProvider({
@@ -41,14 +42,14 @@ const handler = NextAuth({
     strategy: 'jwt',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.id = user.id
       }
       return token
     },
-    async session({ session, token }) {
-      if (token) {
+    async session({ session, token }: any) {
+      if (token && token.id) {
         session.user.id = token.id as string
       }
       return session

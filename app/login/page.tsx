@@ -80,7 +80,8 @@ export default function LoginPage() {
             )}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full text-white"
+              style={{ backgroundColor: '#d21c1a' }}
               disabled={isLoading}
             >
               {isLoading ? 'Anmelden...' : 'Anmelden'}
@@ -91,7 +92,8 @@ export default function LoginPage() {
               Noch kein Konto?{' '}
               <a
                 href="/register"
-                className="text-blue-600 hover:text-blue-500 font-medium"
+                className="font-medium"
+                style={{ color: '#d21c1a' }}
               >
                 Hier registrieren
               </a>

@@ -130,7 +130,8 @@ export default function RegisterPage() {
             )}
             <Button
               type="submit"
-              className="w-full"
+              className="w-full text-white"
+              style={{ backgroundColor: '#d21c1a' }}
               disabled={isLoading}
             >
               {isLoading ? 'Registrieren...' : 'Registrieren'}
@@ -141,7 +142,8 @@ export default function RegisterPage() {
               Bereits ein Konto?{' '}
               <a
                 href="/login"
-                className="text-blue-600 hover:text-blue-500 font-medium"
+                className="font-medium"
+                style={{ color: '#d21c1a' }}
               >
                 Hier anmelden
               </a>

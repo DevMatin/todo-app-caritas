@@ -10,14 +10,23 @@ export async function GET(
   try {
     const session = await getServerSession()
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 })
+    }
+
+    // User-ID aus der Datenbank holen basierend auf E-Mail
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
     }
 
     const task = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: session.user.id 
+        userId: user.id 
       }
     })
 
@@ -40,8 +49,17 @@ export async function PUT(
   try {
     const session = await getServerSession()
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 })
+    }
+
+    // User-ID aus der Datenbank holen basierend auf E-Mail
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -50,7 +68,7 @@ export async function PUT(
     const existingTask = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: session.user.id 
+        userId: user.id 
       }
     })
 
@@ -78,15 +96,24 @@ export async function DELETE(
   try {
     const session = await getServerSession()
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 })
+    }
+
+    // User-ID aus der Datenbank holen basierend auf E-Mail
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
     }
 
     // Prüfen ob Task existiert und dem User gehört
     const existingTask = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: session.user.id 
+        userId: user.id 
       }
     })
 
