@@ -24,7 +24,7 @@ function generateDatabaseUrl() {
     const projectRef = url.hostname.split('.')[0];
     
     // Generiere DATABASE_URL (mit Connection Pooling)
-    const databaseUrl = `postgresql://postgres.${projectRef}:${password}@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`;
+    const databaseUrl = `postgresql://postgres:${password}@aws-0-eu-central-1.pooler.supabase.com:6543/postgres`;
     
     console.log('✅ Generierte DATABASE_URL aus Environment Variables:', databaseUrl);
     
