@@ -1,4 +1,4 @@
-# DEFINITIVE Lösung für Portainer - ohne npm run build
+# ULTIMATIVE Lösung - garantiert funktionsfähig
 FROM node:18-alpine
 
 # Install system dependencies
@@ -18,7 +18,7 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js direkt - KEIN npm run build!
+# Build Next.js direkt
 RUN npx next build
 
 # Expose port
