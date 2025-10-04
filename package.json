@@ -10,7 +10,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "generate-db-url": "node scripts/generate-database-url.js",
-    "setup-db": "node scripts/setup-supabase-database.js"
+    "setup-db": "node scripts/setup-supabase-database.js",
+    "enable-rls": "node scripts/enable-rls-security-supabase.js"
   },
   "dependencies": {
     "next": "14.0.4",
