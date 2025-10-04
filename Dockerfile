@@ -3,12 +3,14 @@ FROM node:18-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+
+# Install dependencies with verbose output for debugging
+RUN npm ci --verbose
 
 # Rebuild the source code only when needed
 FROM base AS builder
