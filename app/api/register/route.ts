@@ -50,8 +50,16 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error('Registrierungsfehler:', error)
+    console.error('Fehler-Details:', {
+      message: error instanceof Error ? error.message : String(error),
+      code: (error as any)?.code || 'unknown',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: 'Fehler beim Erstellen des Benutzers' },
+      { 
+        error: 'Fehler beim Erstellen des Benutzers',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }
