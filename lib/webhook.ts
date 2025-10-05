@@ -60,16 +60,17 @@ export async function sendN8nEvent(
 
     console.log('📤 Sende Event an n8n:', JSON.stringify(payload, null, 2))
 
-    // Headers ohne Authentication für Test
+    // Headers mit Token-Authentifizierung
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
 
-    // Nur Token hinzufügen wenn vorhanden
+    // Token hinzufügen (erforderlich für Sicherheit)
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers['X-Webhook-Token'] = token
     } else {
-      console.log('⚠️ Kein Token gesetzt - sende ohne Authentication')
+      console.log('⚠️ N8N_OUTBOUND_TOKEN fehlt - Webhook wird nicht gesendet')
+      return
     }
 
     const response = await fetch(webhookUrl, {

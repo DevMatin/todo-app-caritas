@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// GET /api/webhooks/n8n - Health Check
+export async function GET(request: NextRequest) {
+  return NextResponse.json({ 
+    message: 'Webhook ist aktiv',
+    timestamp: new Date().toISOString(),
+    methods: ['GET', 'POST']
+  })
+}
+
 // POST /api/webhooks/n8n - Eingehender Webhook von n8n
 export async function POST(request: NextRequest) {
   try {
-    // Token-Verifizierung (temporär deaktiviert für Tests)
-    // const token = request.headers.get('X-Webhook-Token')
-    // const expectedToken = process.env.INBOUND_WEBHOOK_TOKEN
+    // Token-Verifizierung für eingehende Webhooks
+    const token = request.headers.get('X-Webhook-Token')
+    const expectedToken = process.env.INBOUND_WEBHOOK_TOKEN
     
-    // if (!token || !expectedToken || token !== expectedToken) {
-    //   console.log('Webhook: Ungültiger oder fehlender Token')
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // }
+    if (!token || !expectedToken || token !== expectedToken) {
+      console.log('Webhook: Ungültiger oder fehlender Token')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const body = await request.json()
     console.log('Webhook empfangen:', { event: body.event, data: body.data })
@@ -212,4 +221,23 @@ async function handleCardDelete(userId: string, card: any) {
       error: 'Fehler beim Löschen der Task' 
     }, { status: 500 })
   }
+}
+
+// Fallback für andere HTTP-Methoden
+export async function PUT(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'PUT-Methode nicht unterstützt. Verwenden Sie POST für Webhook-Anfragen.' 
+  }, { status: 405 })
+}
+
+export async function DELETE(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'DELETE-Methode nicht unterstützt. Verwenden Sie POST für Webhook-Anfragen.' 
+  }, { status: 405 })
+}
+
+export async function PATCH(request: NextRequest) {
+  return NextResponse.json({ 
+    error: 'PATCH-Methode nicht unterstützt. Verwenden Sie POST für Webhook-Anfragen.' 
+  }, { status: 405 })
 }
