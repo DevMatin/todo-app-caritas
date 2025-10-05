@@ -16,7 +16,7 @@ export default function TestSessionPage() {
             <>
               <p><strong>Email:</strong> {session.user?.email}</p>
               <p><strong>Name:</strong> {session.user?.name}</p>
-              <p><strong>ID:</strong> {session.user?.id}</p>
+              <p><strong>ID:</strong> {(session.user as any)?.id}</p>
             </>
           )}
         </div>
