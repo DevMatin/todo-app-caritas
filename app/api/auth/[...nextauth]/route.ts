@@ -13,27 +13,43 @@ const handler = NextAuth({
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log('NextAuth: Fehlende Anmeldedaten')
+            return null
+          }
+
+          console.log(`NextAuth: Versuche Login für ${credentials.email}`)
+          
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
+
+          if (!user) {
+            console.log(`NextAuth: User nicht gefunden für ${credentials.email}`)
+            return null
+          }
+
+          const valid = await bcrypt.compare(credentials.password, user.password)
+          if (!valid) {
+            console.log(`NextAuth: Ungültiges Passwort für ${credentials.email}`)
+            return null
+          }
+
+          console.log(`NextAuth: Erfolgreicher Login für ${credentials.email}`)
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          }
+        } catch (error) {
+          console.error('NextAuth: Fehler beim Login:', error)
+          console.error('NextAuth: Fehler-Details:', {
+            message: error instanceof Error ? error.message : String(error),
+            code: (error as any)?.code || 'unknown',
+            stack: error instanceof Error ? error.stack : undefined
+          })
           return null
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        })
-
-        if (!user) {
-          return null
-        }
-
-        const valid = await bcrypt.compare(credentials.password, user.password)
-        if (!valid) {
-          return null
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
         }
       }
     })
