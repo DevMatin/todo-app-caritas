@@ -5,10 +5,6 @@ import { getToken } from 'next-auth/jwt'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  console.log(`🔍 MIDDLEWARE V2: ${pathname} - Start`)
-  console.log(`🔍 MIDDLEWARE V2: NEXTAUTH_SECRET vorhanden:`, !!process.env.NEXTAUTH_SECRET)
-  console.log(`🔍 MIDDLEWARE V2: NEXTAUTH_URL vorhanden:`, !!process.env.NEXTAUTH_URL)
-  
   // Öffentliche Routen die nicht geschützt werden müssen
   const publicRoutes = ['/login', '/register', '/api/auth', '/api/register', '/api/webhooks']
   
@@ -16,12 +12,14 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
   
   if (isPublicRoute) {
-    console.log(`✅ MIDDLEWARE V2: Öffentliche Route ${pathname} - Weiterleitung erlaubt`)
+    console.log(`✅ MIDDLEWARE V3: Öffentliche Route ${pathname} - Weiterleitung erlaubt`)
     return NextResponse.next()
   }
 
-  // Versuche Token zu lesen
-  console.log(`🔍 MIDDLEWARE V2: Versuche Token zu lesen für ${pathname}`)
+  // Für geschützte Routen: Token prüfen
+  console.log(`🔍 MIDDLEWARE V3: ${pathname} - Prüfe Token`)
+  console.log(`🔍 MIDDLEWARE V3: NEXTAUTH_SECRET vorhanden:`, !!process.env.NEXTAUTH_SECRET)
+  console.log(`🔍 MIDDLEWARE V3: NEXTAUTH_URL vorhanden:`, !!process.env.NEXTAUTH_URL)
   
   try {
     const token = await getToken({ 
@@ -29,23 +27,23 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET
     })
     
-    console.log(`🔍 MIDDLEWARE V2: Token gefunden:`, !!token)
+    console.log(`🔍 MIDDLEWARE V3: Token gefunden:`, !!token)
     
     if (token) {
-      console.log(`✅ MIDDLEWARE V2: Token vorhanden für ${pathname} - Zugriff erlaubt`)
-      console.log(`🔍 MIDDLEWARE V2: Token-Details:`, {
+      console.log(`✅ MIDDLEWARE V3: Token vorhanden für ${pathname} - Zugriff erlaubt`)
+      console.log(`🔍 MIDDLEWARE V3: Token-Details:`, {
         email: token.email,
         id: token.id,
         exp: token.exp
       })
       return NextResponse.next()
     } else {
-      console.log(`❌ MIDDLEWARE V2: Kein Token für ${pathname} - Weiterleitung zu /login`)
+      console.log(`❌ MIDDLEWARE V3: Kein Token für ${pathname} - Weiterleitung zu /login`)
       return NextResponse.redirect(new URL('/login', request.url))
     }
   } catch (error) {
-    console.log(`❌ MIDDLEWARE V2: Fehler beim Token-Lesen:`, error)
-    console.log(`❌ MIDDLEWARE V2: Weiterleitung zu /login wegen Fehler`)
+    console.log(`❌ MIDDLEWARE V3: Fehler beim Token-Lesen:`, error)
+    console.log(`❌ MIDDLEWARE V3: Weiterleitung zu /login wegen Fehler`)
     return NextResponse.redirect(new URL('/login', request.url))
   }
 }
