@@ -33,11 +33,13 @@ export async function POST(request: NextRequest) {
     const currentList = included?.lists?.find((list: any) => list.id === card?.listId)
     const listName = currentList ? currentList.name : 'Unbekannt'
     
-    // Priorität aus Listen-Name ableiten
-    let priority = 'mittel'
-    if (listName === 'Priorität 1') priority = 'hoch'
-    else if (listName === 'Priorität 2') priority = 'mittel'
-    else if (listName === 'Priorität 3') priority = 'niedrig'
+    // Priorität aus Listen-Name ableiten (behalte Planka-Namen)
+    let priority = 'Priorität 2' // Default
+    if (listName === 'Priorität 1') priority = 'Priorität 1'
+    else if (listName === 'Priorität 2') priority = 'Priorität 2'
+    else if (listName === 'Priorität 3') priority = 'Priorität 3'
+    else if (listName.includes('hoch') || listName.includes('Hoch')) priority = 'Priorität 1'
+    else if (listName.includes('niedrig') || listName.includes('Niedrig')) priority = 'Priorität 3'
 
     // Status aus Listen-Name mappen
     let status = 'offen'
@@ -60,7 +62,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority}`)
+    // Priority-Label für UI generieren
+    const getPriorityLabel = (priority: string) => {
+      switch (priority) {
+        case 'Priorität 1': return 'hoch'
+        case 'Priorität 2': return 'mittel'
+        case 'Priorität 3': return 'niedrig'
+        default: return 'mittel'
+      }
+    }
+    
+    const priorityLabel = getPriorityLabel(priority)
+    
+    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (${priorityLabel})`)
 
     // Versuche Datenbank-Operationen
     let task = null
@@ -121,6 +135,11 @@ export async function POST(request: NextRequest) {
       }
     } catch (dbError) {
       console.error('Webhook: Datenbank-Fehler:', dbError)
+      console.error('Webhook: Fehler-Details:', {
+        message: dbError.message,
+        code: dbError.code,
+        stack: dbError.stack
+      })
       // Weiter ohne Datenbank-Operation
     }
 
@@ -135,6 +154,7 @@ export async function POST(request: NextRequest) {
         deadline: deadline,
         listName: listName,
         priority: priority,
+        priorityLabel: priorityLabel,
         status: status
       },
       user: {
