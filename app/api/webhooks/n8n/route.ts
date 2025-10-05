@@ -138,9 +138,9 @@ export async function POST(request: NextRequest) {
     } catch (dbError) {
       console.error('Webhook: Datenbank-Fehler:', dbError)
       console.error('Webhook: Fehler-Details:', {
-        message: dbError.message,
-        code: dbError.code,
-        stack: dbError.stack
+        message: dbError instanceof Error ? dbError.message : String(dbError),
+        code: (dbError as any)?.code || 'unknown',
+        stack: dbError instanceof Error ? dbError.stack : undefined
       })
       // Weiter ohne Datenbank-Operation
     }
