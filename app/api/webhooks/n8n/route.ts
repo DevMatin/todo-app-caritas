@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     
     const priorityLabel = getPriorityLabel(priority)
     
-    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (${priorityLabel})`)
+    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (Label: ${priorityLabel})`)
 
     // Versuche Datenbank-Operationen
     let task = null
