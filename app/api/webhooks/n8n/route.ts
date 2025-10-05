@@ -24,10 +24,47 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Webhook empfangen:', { event: body.event })
 
-    // Einfache Antwort
+    // Planka-Daten extrahieren
+    const card = body.data?.item
+    const included = body.data?.included
+    
+    // Aktuelle Liste finden
+    const currentList = included?.lists?.find((list: any) => list.id === card?.listId)
+    const listName = currentList ? currentList.name : 'Unbekannt'
+    
+    // Priorität aus Listen-Name ableiten
+    let priority = 'mittel'
+    if (listName === 'Priorität 1') priority = 'hoch'
+    else if (listName === 'Priorität 2') priority = 'mittel'
+    else if (listName === 'Priorität 3') priority = 'niedrig'
+
+    // Status aus Listen-Name mappen
+    let status = 'offen'
+    if (listName === 'Priorität 1') status = 'in_bearbeitung'
+    else if (listName === 'Erledigt') status = 'erledigt'
+
+    // Deadline parsen falls vorhanden
+    const deadline = card?.dueDate ? new Date(card.dueDate) : null
+
+    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority}`)
+
+    // Erfolgreiche Antwort
     return NextResponse.json({ 
       message: 'Webhook erfolgreich verarbeitet',
       event: body.event,
+      card: {
+        id: card?.id,
+        name: card?.name,
+        description: card?.description,
+        deadline: deadline,
+        listName: listName,
+        priority: priority,
+        status: status
+      },
+      user: {
+        email: body.user?.email,
+        name: body.user?.name
+      },
       timestamp: new Date().toISOString()
     }, { status: 200 })
 
