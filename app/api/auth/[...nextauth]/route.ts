@@ -113,7 +113,7 @@ const handler = NextAuth({
       }
     }
   },
-  debug: true, // Debug für Produktion aktivieren
+  debug: process.env.NODE_ENV === 'production', // Debug nur in Produktion
 })
 
 export { handler as GET, handler as POST }
