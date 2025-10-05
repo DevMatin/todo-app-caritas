@@ -150,10 +150,9 @@ async function handleCardUpdate(userId: string, card: any, status: string, prior
     }
 
     if (!existingTask) {
-      console.log(`Webhook: Task nicht gefunden für Update - Card ID: ${card.id}, Name: ${card.name}`)
-      return NextResponse.json({ 
-        error: 'Task nicht gefunden' 
-      }, { status: 404 })
+      console.log(`Webhook: Task nicht gefunden für Update - erstelle neue Task für Card ID: ${card.id}, Name: ${card.name}`)
+      // Erstelle neue Task wenn keine gefunden wird
+      return await handleCardCreate(userId, card, status, priority, deadline)
     }
 
     const updatedTask = await prisma.task.update({
