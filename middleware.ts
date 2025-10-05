@@ -3,16 +3,21 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request })
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  })
   const { pathname } = request.nextUrl
 
   // Debug-Logs für Session-Status
   console.log(`Middleware: ${pathname} - Token vorhanden:`, !!token)
+  console.log(`Middleware: NEXTAUTH_SECRET gesetzt:`, !!process.env.NEXTAUTH_SECRET)
   if (token) {
     console.log('Middleware: Token-Details:', {
       email: token.email,
       id: token.id,
-      exp: token.exp
+      exp: token.exp,
+      iat: token.iat
     })
   }
 
