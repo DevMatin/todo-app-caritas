@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
             description: card?.description,
             status: status,
             priority: priority,
+            label: priorityLabel,
             deadline: deadline,
             externalId: card?.id,
             userId: user.id
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
             description: card?.description,
             status: status,
             priority: priority,
+            label: priorityLabel,
             deadline: deadline,
             externalId: card?.id
           }
@@ -171,6 +173,7 @@ export async function POST(request: NextRequest) {
         title: task.title,
         status: task.status,
         priority: task.priority,
+        label: task.label,
         deadline: task.deadline
       }
     }

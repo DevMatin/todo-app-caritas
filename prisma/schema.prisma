@@ -27,6 +27,7 @@ model Task {
   title       String
   description String?
   priority    String    @default("Priorität 2") // Priorität 1, Priorität 2, Priorität 3
+  label       String?   @map("label") // hoch, mittel, niedrig (für UI)
   status      String    @default("offen")  // offen, in_bearbeitung, erledigt
   deadline    DateTime?
   comment     String?
