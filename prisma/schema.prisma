@@ -26,7 +26,8 @@ model Task {
   id          String    @id @default(cuid())
   title       String
   description String?
-  priority    String    @default("mittel") // niedrig, mittel, hoch, dringend
+  priority    String    @default("Priorität 2") // Priorität 1, Priorität 2, Priorität 3
+  label       String?   // hoch, mittel, niedrig (für UI)
   status      String    @default("offen")  // offen, in_bearbeitung, erledigt
   deadline    DateTime?
   comment     String?
