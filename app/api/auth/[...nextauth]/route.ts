@@ -109,11 +109,31 @@ const handler = NextAuth({
         sameSite: 'lax',
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+        maxAge: 30 * 24 * 60 * 60, // 30 Tage
+      }
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 15 * 60, // 15 Minuten
+      }
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 15 * 60, // 15 Minuten
       }
     }
   },
-  debug: process.env.NODE_ENV === 'development',
+  debug: true, // Debug für Produktion aktivieren
 })
 
 export { handler as GET, handler as POST }

@@ -3,16 +3,31 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // Debug-Logs für Session-Status
+  console.log(`Middleware: ${pathname} - Start`)
+  console.log(`Middleware: NEXTAUTH_SECRET gesetzt:`, !!process.env.NEXTAUTH_SECRET)
+  
+  const cookieHeader = request.headers.get('cookie')
+  console.log(`Middleware: Cookie-Header vorhanden:`, !!cookieHeader)
+  console.log(`Middleware: Cookie-Header Länge:`, cookieHeader?.length || 0)
+  
+  if (cookieHeader) {
+    const sessionCookie = cookieHeader.includes('next-auth.session-token')
+    console.log(`Middleware: Session-Cookie gefunden:`, sessionCookie)
+    
+    if (sessionCookie) {
+      console.log(`Middleware: Session-Cookie Wert:`, cookieHeader.match(/next-auth\.session-token=([^;]+)/)?.[1]?.substring(0, 50) + '...')
+    }
+  }
+  
   const token = await getToken({ 
     req: request,
     secret: process.env.NEXTAUTH_SECRET
   })
-  const { pathname } = request.nextUrl
-
-  // Debug-Logs für Session-Status
+  
   console.log(`Middleware: ${pathname} - Token vorhanden:`, !!token)
-  console.log(`Middleware: NEXTAUTH_SECRET gesetzt:`, !!process.env.NEXTAUTH_SECRET)
-  console.log(`Middleware: Request Headers Cookie:`, request.headers.get('cookie')?.substring(0, 100))
   
   if (token) {
     console.log('Middleware: Token-Details:', {
@@ -22,7 +37,7 @@ export async function middleware(request: NextRequest) {
       iat: token.iat
     })
   } else {
-    console.log('Middleware: Kein Token gefunden - Cookie-Header:', request.headers.get('cookie'))
+    console.log('Middleware: Kein Token gefunden')
   }
 
   // Öffentliche Routen die nicht geschützt werden müssen
