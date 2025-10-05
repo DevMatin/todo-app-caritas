@@ -34,25 +34,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // User per E-Mail finden
-    let user = await prisma.user.findUnique({
-      where: { email: plankaUser.email }
-    })
-
-    if (!user) {
-      console.log(`Webhook: User nicht gefunden für E-Mail: ${plankaUser.email} - erstelle neuen User`)
-      // Erstelle neuen User wenn nicht gefunden
-      const newUser = await prisma.user.create({
-        data: {
-          email: plankaUser.email,
-          name: plankaUser.name || plankaUser.email.split('@')[0],
-          password: 'webhook-user' // Dummy-Passwort für Webhook-User
-        }
-      })
-      console.log(`Webhook: Neuer User erstellt - ID: ${newUser.id}, E-Mail: ${newUser.email}`)
-      user = newUser
-    }
-
     // Planka-Daten extrahieren
     const card = data.item
     const included = data.included
@@ -84,21 +65,24 @@ export async function POST(request: NextRequest) {
     console.log(`Webhook: Verarbeite ${event} - Card: ${card.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority}`)
     console.log(`Webhook: Card Details - ID: ${card.id}, Deadline: ${deadline}, Beschreibung: ${card.description}`)
 
-    switch (event) {
-      case 'cardCreate':
-        return await handleCardCreate(user.id, card, status, priority, deadline)
-      
-      case 'cardUpdate':
-        return await handleCardUpdate(user.id, card, status, priority, deadline, prevData)
-      
-      case 'cardDelete':
-        return await handleCardDelete(user.id, card)
-      
-      default:
-        return NextResponse.json({ 
-          error: `Unbekanntes Event: ${event}` 
-        }, { status: 400 })
-    }
+    // Erfolgreiche Antwort ohne Datenbank-Operation
+    return NextResponse.json({ 
+      message: 'Webhook erfolgreich verarbeitet',
+      event: event,
+      card: {
+        id: card.id,
+        name: card.name,
+        description: card.description,
+        deadline: deadline,
+        listName: listName,
+        priority: priority,
+        status: status
+      },
+      user: {
+        email: plankaUser.email,
+        name: plankaUser.name
+      }
+    }, { status: 200 })
 
   } catch (error) {
     console.error('Webhook-Fehler:', error)
