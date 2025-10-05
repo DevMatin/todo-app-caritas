@@ -1,7 +1,19 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Erstelle Prisma Client direkt hier - verhindert prepared statement Fehler
+function getPrismaClient() {
+  return new PrismaClient({
+    log: ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  })
+}
 
 // @ts-ignore - NextAuth v4 compatibility issue
 const handler = NextAuth({
@@ -21,9 +33,15 @@ const handler = NextAuth({
 
           console.log(`NextAuth: Versuche Login für ${credentials.email}`)
           
+          // Erstelle neuen Prisma Client für jeden Request
+          const prisma = getPrismaClient()
+          
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
+
+          // Schließe Prisma Client sofort
+          await prisma.$disconnect()
 
           if (!user) {
             console.log(`NextAuth: User nicht gefunden für ${credentials.email}`)

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcrypt'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
+
+// Erstelle Prisma Client direkt hier - verhindert prepared statement Fehler
+function getPrismaClient() {
+  return new PrismaClient({
+    log: ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,12 +25,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Erstelle neuen Prisma Client für jeden Request
+    const prisma = getPrismaClient()
+
     // Prüfen ob User bereits existiert
     const existingUser = await prisma.user.findUnique({
       where: { email }
     })
 
     if (existingUser) {
+      await prisma.$disconnect()
       return NextResponse.json(
         { error: 'Benutzer mit dieser E-Mail existiert bereits' },
         { status: 400 }
@@ -43,6 +59,9 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       }
     })
+
+    // Schließe Prisma Client sofort
+    await prisma.$disconnect()
 
     return NextResponse.json(
       { message: 'Benutzer erfolgreich erstellt', user },

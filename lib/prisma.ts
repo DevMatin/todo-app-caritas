@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 
-// Funktion um Prisma Client zu erstellen - verhindert prepared statement Fehler
+// Radikale Lösung für Vercel: Deaktiviere Prepared Statements komplett
 function createPrismaClient() {
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
@@ -9,9 +9,14 @@ function createPrismaClient() {
         url: process.env.DATABASE_URL,
       },
     },
+    // Deaktiviere Prepared Statements für Vercel
+    __internal: {
+      engine: {
+        preparedStatements: false,
+      },
+    },
   })
 }
 
-// In Vercel/Serverless: Erstelle bei jedem Import einen neuen Client
-// Das verhindert "prepared statement already exists" Fehler komplett
+// Erstelle bei jedem Request einen komplett neuen Client
 export const prisma = createPrismaClient()
