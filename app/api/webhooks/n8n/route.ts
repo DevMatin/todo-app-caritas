@@ -35,15 +35,22 @@ export async function POST(request: NextRequest) {
     }
 
     // User per E-Mail finden
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email: plankaUser.email }
     })
 
     if (!user) {
-      console.log(`Webhook: User nicht gefunden für E-Mail: ${plankaUser.email}`)
-      return NextResponse.json({ 
-        error: 'Benutzer nicht gefunden' 
-      }, { status: 409 })
+      console.log(`Webhook: User nicht gefunden für E-Mail: ${plankaUser.email} - erstelle neuen User`)
+      // Erstelle neuen User wenn nicht gefunden
+      const newUser = await prisma.user.create({
+        data: {
+          email: plankaUser.email,
+          name: plankaUser.name || plankaUser.email.split('@')[0],
+          password: 'webhook-user' // Dummy-Passwort für Webhook-User
+        }
+      })
+      console.log(`Webhook: Neuer User erstellt - ID: ${newUser.id}, E-Mail: ${newUser.email}`)
+      user = newUser
     }
 
     // Planka-Daten extrahieren
