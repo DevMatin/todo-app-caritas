@@ -45,7 +45,20 @@ export async function POST(request: NextRequest) {
     else if (listName === 'Erledigt') status = 'erledigt'
 
     // Deadline parsen falls vorhanden
-    const deadline = card?.dueDate ? new Date(card.dueDate) : null
+    let deadline = null
+    if (card?.dueDate) {
+      try {
+        deadline = new Date(card.dueDate)
+        // Prüfen ob das Datum gültig ist
+        if (isNaN(deadline.getTime())) {
+          console.log(`Webhook: Ungültiges Datum - ${card.dueDate}`)
+          deadline = null
+        }
+      } catch (error) {
+        console.log(`Webhook: Fehler beim Parsen des Datums - ${card.dueDate}`)
+        deadline = null
+      }
+    }
 
     console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority}`)
 
