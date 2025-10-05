@@ -127,11 +127,11 @@ export default function HomePage() {
     const matches = (() => {
       switch (filter) {
         case 'prio1':
-          return task.priority === 'hoch' || task.priority === 'dringend'
+          return task.priority === 'Priorität 1' || task.priority === 'hoch' || task.priority === 'dringend'
         case 'prio2':
-          return task.priority === 'mittel'
+          return task.priority === 'Priorität 2' || task.priority === 'mittel'
         case 'prio3':
-          return task.priority === 'niedrig'
+          return task.priority === 'Priorität 3' || task.priority === 'niedrig'
         default:
           return true
       }
