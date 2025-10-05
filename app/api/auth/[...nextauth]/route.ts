@@ -80,6 +80,15 @@ const handler = NextAuth({
       }
       return session
     },
+    async redirect({ url, baseUrl }: any) {
+      console.log('NextAuth Redirect Callback:', { url, baseUrl })
+      // Wenn die URL relativ ist, zur Basis-URL weiterleiten
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      // Wenn die URL die gleiche Domain hat, dorthin weiterleiten
+      else if (new URL(url).origin === baseUrl) return url
+      // Ansonsten zur Basis-URL weiterleiten
+      return baseUrl
+    },
   },
   pages: {
     signIn: '/login',

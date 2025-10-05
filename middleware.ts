@@ -12,6 +12,8 @@ export async function middleware(request: NextRequest) {
   // Debug-Logs für Session-Status
   console.log(`Middleware: ${pathname} - Token vorhanden:`, !!token)
   console.log(`Middleware: NEXTAUTH_SECRET gesetzt:`, !!process.env.NEXTAUTH_SECRET)
+  console.log(`Middleware: Request Headers Cookie:`, request.headers.get('cookie')?.substring(0, 100))
+  
   if (token) {
     console.log('Middleware: Token-Details:', {
       email: token.email,
@@ -19,6 +21,8 @@ export async function middleware(request: NextRequest) {
       exp: token.exp,
       iat: token.iat
     })
+  } else {
+    console.log('Middleware: Kein Token gefunden - Cookie-Header:', request.headers.get('cookie'))
   }
 
   // Öffentliche Routen die nicht geschützt werden müssen
