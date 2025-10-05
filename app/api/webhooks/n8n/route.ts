@@ -57,13 +57,16 @@ export async function POST(request: NextRequest) {
     // Status-Mapping aus Umgebungsvariable
     const listToStatusMapping = JSON.parse(
       process.env.PLANKA_LIST_TO_STATUS || 
-      '{"Offen":"offen","In Bearbeitung":"in_bearbeitung","Erledigt":"erledigt","uns":"offen","test":"in_bearbeitung"}'
+      '{"Priorität 1":"in_bearbeitung","Priorität 2":"offen","Priorität 3":"offen","Erledigt":"erledigt","Offen":"offen","In Bearbeitung":"in_bearbeitung"}'
     )
 
-    // Priorität aus erstem Label ableiten (falls vorhanden)
-    const priority = card.labels && card.labels.length > 0 
-      ? card.labels[0].toLowerCase() 
-      : 'mittel'
+    // Priorität aus Listen-Name ableiten (exakte Übereinstimmung)
+    let priority = 'mittel'
+    if (listName === 'Priorität 1') priority = 'hoch'
+    else if (listName === 'Priorität 2') priority = 'mittel'
+    else if (listName === 'Priorität 3') priority = 'niedrig'
+    else if (listName.includes('hoch') || listName.includes('Hoch')) priority = 'hoch'
+    else if (listName.includes('niedrig') || listName.includes('Niedrig')) priority = 'niedrig'
 
     // Status aus Listen-Name mappen
     const status = listToStatusMapping[listName] || 'offen'
@@ -71,7 +74,8 @@ export async function POST(request: NextRequest) {
     // Deadline parsen falls vorhanden
     const deadline = card.dueDate ? new Date(card.dueDate) : null
 
-    console.log(`Webhook: Verarbeite ${event} - Card: ${card.name}, Liste: ${listName}, Status: ${status}`)
+    console.log(`Webhook: Verarbeite ${event} - Card: ${card.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority}`)
+    console.log(`Webhook: Card Details - ID: ${card.id}, Deadline: ${deadline}, Beschreibung: ${card.description}`)
 
     switch (event) {
       case 'cardCreate':
@@ -164,10 +168,13 @@ async function handleCardUpdate(userId: string, card: any, status: string, prior
       }
     })
 
-    console.log(`Webhook: Task aktualisiert - ID: ${updatedTask.id}, Status: ${status}`)
+    console.log(`Webhook: Task aktualisiert - ID: ${updatedTask.id}, Status: ${status}, Priorität: ${priority}`)
+    console.log(`Webhook: Task Details - Titel: ${updatedTask.title}, Deadline: ${updatedTask.deadline}`)
     return NextResponse.json({ 
       message: 'Task erfolgreich aktualisiert',
-      taskId: updatedTask.id 
+      taskId: updatedTask.id,
+      status: updatedTask.status,
+      priority: updatedTask.priority
     })
 
   } catch (error) {
