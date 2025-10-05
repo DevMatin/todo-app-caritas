@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 
 // GET /api/webhooks/n8n - Health Check
 export async function GET(request: NextRequest) {
