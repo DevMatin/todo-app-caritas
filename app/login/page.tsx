@@ -25,6 +25,7 @@ export default function LoginPage() {
         email,
         password,
         redirect: false,
+        callbackUrl: '/',
       })
 
       if (result?.error) {
@@ -33,10 +34,8 @@ export default function LoginPage() {
       } else {
         console.log('Login erfolgreich, weiterleitung zu /')
         console.log('Login-Result:', result)
-        // Warten kurz, damit die Session gesetzt wird
-        setTimeout(() => {
-          window.location.href = '/'
-        }, 100)
+        // Sofortige Weiterleitung ohne Verzögerung
+        window.location.href = '/'
       }
     } catch (error) {
       setError('Ein Fehler ist aufgetreten')

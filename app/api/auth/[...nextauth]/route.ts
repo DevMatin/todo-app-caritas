@@ -12,7 +12,7 @@ const handler = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         try {
           if (!credentials?.email || !credentials?.password) {
             console.log('NextAuth: Fehlende Anmeldedaten')
@@ -82,6 +82,13 @@ const handler = NextAuth({
     },
     async redirect({ url, baseUrl }: any) {
       console.log('NextAuth Redirect Callback:', { url, baseUrl })
+      
+      // Wenn die URL zur Login-Seite zeigt, zur Hauptseite weiterleiten
+      if (url.includes('/login')) {
+        console.log('NextAuth: Redirect von Login-Seite zur Hauptseite')
+        return baseUrl
+      }
+      
       // Wenn die URL relativ ist, zur Basis-URL weiterleiten
       if (url.startsWith('/')) return `${baseUrl}${url}`
       // Wenn die URL die gleiche Domain hat, dorthin weiterleiten
@@ -92,6 +99,7 @@ const handler = NextAuth({
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   cookies: {
     sessionToken: {
