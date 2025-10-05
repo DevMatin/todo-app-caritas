@@ -111,26 +111,6 @@ const handler = NextAuth({
         secure: process.env.NODE_ENV === 'production',
         maxAge: 30 * 24 * 60 * 60, // 30 Tage
       }
-    },
-    callbackUrl: {
-      name: `next-auth.callback-url`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 15 * 60, // 15 Minuten
-      }
-    },
-    csrfToken: {
-      name: `next-auth.csrf-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 15 * 60, // 15 Minuten
-      }
     }
   },
   debug: true, // Debug für Produktion aktivieren

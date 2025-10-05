@@ -5,39 +5,40 @@ import { getToken } from 'next-auth/jwt'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Debug-Logs für Session-Status
   console.log(`Middleware: ${pathname} - Start`)
-  console.log(`Middleware: NEXTAUTH_SECRET gesetzt:`, !!process.env.NEXTAUTH_SECRET)
   
-  const cookieHeader = request.headers.get('cookie')
-  console.log(`Middleware: Cookie-Header vorhanden:`, !!cookieHeader)
-  console.log(`Middleware: Cookie-Header Länge:`, cookieHeader?.length || 0)
+  // Versuche Token zu lesen mit verschiedenen Optionen
+  let token = null
   
-  if (cookieHeader) {
-    const sessionCookie = cookieHeader.includes('next-auth.session-token')
-    console.log(`Middleware: Session-Cookie gefunden:`, sessionCookie)
-    
-    if (sessionCookie) {
-      console.log(`Middleware: Session-Cookie Wert:`, cookieHeader.match(/next-auth\.session-token=([^;]+)/)?.[1]?.substring(0, 50) + '...')
+  try {
+    // Option 1: Mit explizitem Secret
+    token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    })
+    console.log(`Middleware: Token mit Secret gefunden:`, !!token)
+  } catch (error) {
+    console.log(`Middleware: Fehler beim Token-Lesen mit Secret:`, error)
+  }
+  
+  if (!token) {
+    try {
+      // Option 2: Ohne explizites Secret (NextAuth sollte es automatisch finden)
+      token = await getToken({ req: request })
+      console.log(`Middleware: Token ohne Secret gefunden:`, !!token)
+    } catch (error) {
+      console.log(`Middleware: Fehler beim Token-Lesen ohne Secret:`, error)
     }
   }
   
-  const token = await getToken({ 
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET
-  })
-  
-  console.log(`Middleware: ${pathname} - Token vorhanden:`, !!token)
+  console.log(`Middleware: ${pathname} - Final Token vorhanden:`, !!token)
   
   if (token) {
     console.log('Middleware: Token-Details:', {
       email: token.email,
       id: token.id,
-      exp: token.exp,
-      iat: token.iat
+      exp: token.exp
     })
-  } else {
-    console.log('Middleware: Kein Token gefunden')
   }
 
   // Öffentliche Routen die nicht geschützt werden müssen
@@ -79,7 +80,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - api/auth (NextAuth API routes)
+     * - api/webhooks (webhook routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/webhooks).*)',
   ],
 }
