@@ -63,8 +63,9 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   }
 
   // Datum formatieren
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('de-DE', {
+  const formatDate = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return dateObj.toLocaleDateString('de-DE', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -74,8 +75,8 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   }
 
   // Deadline formatieren
-  const formatDeadline = (deadline: string) => {
-    const deadlineDate = new Date(deadline)
+  const formatDeadline = (deadline: string | Date) => {
+    const deadlineDate = typeof deadline === 'string' ? new Date(deadline) : deadline
     const now = new Date()
     const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     
@@ -91,7 +92,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   }
 
   const StatusIcon = statusConfig[task.status as keyof typeof statusConfig].icon
-  const deadlineInfo = task.deadline ? formatDeadline(task.deadline.toISOString()) : null
+  const deadlineInfo = task.deadline ? formatDeadline(task.deadline) : null
 
   return (
     <Card className={`hover:shadow-md transition-shadow ${task.status === 'erledigt' ? 'opacity-70' : ''}`}>
@@ -150,7 +151,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
           <div className="flex items-center gap-2 mb-4">
             <Calendar className="h-4 w-4 text-gray-500" />
             <span className="text-sm text-gray-600">
-              Fällig: {formatDate(task.deadline.toISOString())}
+              Fällig: {formatDate(task.deadline)}
             </span>
             {deadlineInfo && (
               <span className={`text-sm font-medium ${deadlineInfo.color}`}>
@@ -204,12 +205,12 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
         <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            Erstellt: {formatDate(task.createdAt.toISOString())}
+            Erstellt: {formatDate(task.createdAt)}
           </div>
           {task.updatedAt !== task.createdAt && (
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Aktualisiert: {formatDate(task.updatedAt.toISOString())}
+              Aktualisiert: {formatDate(task.updatedAt)}
             </div>
           )}
         </div>

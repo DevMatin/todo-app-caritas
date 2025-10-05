@@ -6,6 +6,16 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request })
   const { pathname } = request.nextUrl
 
+  // Debug-Logs für Session-Status
+  console.log(`Middleware: ${pathname} - Token vorhanden:`, !!token)
+  if (token) {
+    console.log('Middleware: Token-Details:', {
+      email: token.email,
+      id: token.id,
+      exp: token.exp
+    })
+  }
+
   // Öffentliche Routen die nicht geschützt werden müssen
   const publicRoutes = ['/login', '/register', '/api/auth', '/api/register', '/api/webhooks']
   
@@ -17,19 +27,23 @@ export async function middleware(request: NextRequest) {
   const isApiRoute = apiRoutes.some(route => pathname.startsWith(route))
   
   if (isPublicRoute) {
+    console.log(`Middleware: Öffentliche Route ${pathname} - Weiterleitung erlaubt`)
     return NextResponse.next()
   }
 
   // Für API-Routen: Weiterleiten ohne Redirect (API gibt 401 zurück)
   if (isApiRoute) {
+    console.log(`Middleware: API-Route ${pathname} - Weiterleitung erlaubt`)
     return NextResponse.next()
   }
 
   // Wenn kein Token vorhanden ist, zur Login-Seite weiterleiten
   if (!token) {
+    console.log(`Middleware: Kein Token für ${pathname} - Weiterleitung zu /login`)
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  console.log(`Middleware: Token vorhanden für ${pathname} - Zugriff erlaubt`)
   return NextResponse.next()
 }
 
@@ -40,7 +54,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - api/auth (NextAuth API routes)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth).*)',
   ],
 }

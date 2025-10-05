@@ -28,8 +28,11 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
+        console.log('Login-Fehler:', result.error)
         setError('Ungültige Anmeldedaten')
       } else {
+        console.log('Login erfolgreich, weiterleitung zu /')
+        console.log('Login-Result:', result)
         router.push('/')
         router.refresh()
       }

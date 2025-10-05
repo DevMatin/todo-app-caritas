@@ -1,19 +1,7 @@
 import NextAuth from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcrypt'
-import { PrismaClient } from '@prisma/client'
-
-// Erstelle Prisma Client direkt hier - verhindert prepared statement Fehler
-function getPrismaClient() {
-  return new PrismaClient({
-    log: ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  })
-}
+import { prisma } from '@/lib/prisma'
 
 // @ts-ignore - NextAuth v4 compatibility issue
 const handler = NextAuth({
@@ -33,15 +21,9 @@ const handler = NextAuth({
 
           console.log(`NextAuth: Versuche Login für ${credentials.email}`)
           
-          // Erstelle neuen Prisma Client für jeden Request
-          const prisma = getPrismaClient()
-          
           const user = await prisma.user.findUnique({
             where: { email: credentials.email }
           })
-
-          // Schließe Prisma Client sofort
-          await prisma.$disconnect()
 
           if (!user) {
             console.log(`NextAuth: User nicht gefunden für ${credentials.email}`)
@@ -74,17 +56,25 @@ const handler = NextAuth({
   ],
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 Tage
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 Tage
   },
   callbacks: {
     async jwt({ token, user }: any) {
+      console.log('NextAuth JWT Callback:', { token: !!token, user: !!user })
       if (user) {
         token.id = user.id
+        console.log('NextAuth: User-Daten in Token gesetzt:', { id: user.id, email: user.email })
       }
       return token
     },
     async session({ session, token }: any) {
+      console.log('NextAuth Session Callback:', { session: !!session, token: !!token })
       if (token && token.id) {
         session.user.id = token.id as string
+        console.log('NextAuth: Session mit User-ID erstellt:', session.user.id)
       }
       return session
     },
@@ -92,6 +82,18 @@ const handler = NextAuth({
   pages: {
     signIn: '/login',
   },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
+  debug: process.env.NODE_ENV === 'development',
 })
 
 export { handler as GET, handler as POST }

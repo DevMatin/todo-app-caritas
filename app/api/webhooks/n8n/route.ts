@@ -25,13 +25,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Webhook empfangen:', { event: body.event })
 
-    // Planka-Daten extrahieren
-    const card = body.data?.item
-    const included = body.data?.included
+    // Planka-Daten extrahieren - verschiedene Event-Typen handhaben
+    let card: any, included: any, listName: string
     
-    // Aktuelle Liste finden
-    const currentList = included?.lists?.find((list: any) => list.id === card?.listId)
-    const listName = currentList ? currentList.name : 'Unbekannt'
+    if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
+      // Für actionCreate Events (moveCard)
+      const actionData = body.data.item.data
+      card = {
+        id: body.data.cardId,
+        name: actionData.card.name,
+        description: '', // Nicht in actionCreate verfügbar
+        dueDate: null,   // Nicht in actionCreate verfügbar
+        listId: actionData.toList.id
+      }
+      included = body.data.included
+      listName = actionData.toList.name
+      console.log(`Webhook: moveCard Event - Card ${card.name} von "${actionData.fromList.name}" zu "${actionData.toList.name}"`)
+    } else {
+      // Für cardUpdate Events (Standard)
+      card = body.data?.item
+      included = body.data?.included
+      
+      // Aktuelle Liste finden
+      const currentList = included?.lists?.find((list: any) => list.id === card?.listId)
+      listName = currentList ? currentList.name : 'Unbekannt'
+    }
     
     // Priorität aus Listen-Name ableiten (behalte Planka-Namen)
     let priority = 'Priorität 2' // Default
@@ -75,6 +93,12 @@ export async function POST(request: NextRequest) {
     const priorityLabel = getPriorityLabel(priority)
     
     console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (Label: ${priorityLabel})`)
+    
+    // Zusätzliche Logging für actionCreate Events
+    if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
+      const actionData = body.data.item.data
+      console.log(`Webhook: moveCard Details - Von: "${actionData.fromList.name}" (${actionData.fromList.id}) zu: "${actionData.toList.name}" (${actionData.toList.id})`)
+    }
 
     // Versuche Datenbank-Operationen
     let task = null
@@ -109,7 +133,7 @@ export async function POST(request: NextRequest) {
         task = await prisma.task.create({
           data: {
             title: card?.name,
-            description: card?.description,
+            description: card?.description || '',
             status: status,
             priority: priority,
             label: priorityLabel,
@@ -121,19 +145,28 @@ export async function POST(request: NextRequest) {
         console.log(`Webhook: Neue Task erstellt - ID: ${task.id}`)
       } else {
         console.log(`Webhook: Task gefunden - aktualisiere Task ID: ${task.id}`)
+        
+        // Bei actionCreate Events nur Priorität und Status aktualisieren
+        // Bei cardUpdate Events alle Felder aktualisieren
+        const updateData: any = {
+          status: status,
+          priority: priority,
+          label: priorityLabel
+        }
+        
+        if (body.event === 'cardUpdate') {
+          // Vollständige Aktualisierung bei cardUpdate
+          updateData.title = card?.name
+          updateData.description = card?.description
+          updateData.deadline = deadline
+          updateData.externalId = card?.id
+        }
+        
         task = await prisma.task.update({
           where: { id: task.id },
-          data: {
-            title: card?.name,
-            description: card?.description,
-            status: status,
-            priority: priority,
-            label: priorityLabel,
-            deadline: deadline,
-            externalId: card?.id
-          }
+          data: updateData
         })
-        console.log(`Webhook: Task aktualisiert - ID: ${task.id}`)
+        console.log(`Webhook: Task aktualisiert - ID: ${task.id}, Event: ${body.event}`)
       }
     } catch (dbError) {
       console.error('Webhook: Datenbank-Fehler:', dbError)

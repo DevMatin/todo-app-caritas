@@ -32,22 +32,30 @@ function generateDatabaseUrl() {
     return databaseUrl;
   }
   
-  // Fallback: Lade .env Datei (für lokale Entwicklung)
+  // Fallback: Lade .env.local oder .env Datei (für lokale Entwicklung)
+  const envLocalPath = path.join(process.cwd(), '.env.local');
   const envPath = path.join(process.cwd(), '.env');
   
   let envContent = '';
-  if (fs.existsSync(envPath)) {
+  let envFilePath = '';
+  
+  // Priorisiere .env.local über .env
+  if (fs.existsSync(envLocalPath)) {
+    envContent = fs.readFileSync(envLocalPath, 'utf8');
+    envFilePath = envLocalPath;
+  } else if (fs.existsSync(envPath)) {
     envContent = fs.readFileSync(envPath, 'utf8');
+    envFilePath = envPath;
   }
   
-  // Extrahiere SUPABASE_URL und SUPABASE_DB_PASSWORD aus .env
+  // Extrahiere SUPABASE_URL und SUPABASE_DB_PASSWORD aus .env/.env.local
   const supabaseUrlMatch = envContent.match(/SUPABASE_URL="([^"]+)"/);
   const passwordMatch = envContent.match(/SUPABASE_DB_PASSWORD="([^"]+)"/);
   
   if (!supabaseUrlMatch) {
-    console.error('SUPABASE_URL nicht gefunden in Environment Variables oder .env Datei');
+    console.error('SUPABASE_URL nicht gefunden in Environment Variables oder .env/.env.local Datei');
     console.error('Bitte setzen Sie SUPABASE_URL und SUPABASE_DB_PASSWORD in Vercel Environment Variables');
-    console.error('Oder erstellen Sie eine .env Datei mit den echten Werten');
+    console.error('Oder erstellen Sie eine .env.local oder .env Datei mit den echten Werten');
     process.exit(1);
   }
   
@@ -64,9 +72,9 @@ function generateDatabaseUrl() {
   // Setze DATABASE_URL als Environment Variable für Prisma
   process.env.DATABASE_URL = databaseUrl;
   
-  // Setze DATABASE_URL in .env
-  if (fs.existsSync(envPath)) {
-    let envFile = fs.readFileSync(envPath, 'utf8');
+  // Setze DATABASE_URL in die entsprechende .env Datei
+  if (envFilePath) {
+    let envFile = fs.readFileSync(envFilePath, 'utf8');
     
     // Ersetze existierende DATABASE_URL oder füge neue hinzu
     if (envFile.includes('DATABASE_URL=')) {
@@ -75,9 +83,10 @@ function generateDatabaseUrl() {
       envFile += `\nDATABASE_URL="${databaseUrl}"\n`;
     }
     
-    fs.writeFileSync(envPath, envFile);
+    fs.writeFileSync(envFilePath, envFile);
   } else {
-    fs.writeFileSync(envPath, `DATABASE_URL="${databaseUrl}"\n`);
+    // Fallback: Erstelle .env.local wenn keine .env Datei existiert
+    fs.writeFileSync(envLocalPath, `DATABASE_URL="${databaseUrl}"\n`);
   }
   
   return databaseUrl;

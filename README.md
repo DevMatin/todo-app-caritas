@@ -12,56 +12,103 @@ Eine moderne Aufgabenverwaltung für Handwerker-Teams, entwickelt mit Next.js, P
 - 🐳 Docker-Containerisierung für einfaches Deployment
 - 🚀 Portainer-kompatibel
 
-## Lokale Entwicklung
+## 🚀 Schnellstart (Nach erstmaliger Einrichtung)
+
+**Wenn das Projekt bereits eingerichtet ist, reicht ein einziger Befehl:**
+
+```bash
+npm run dev
+```
+
+Die App ist dann sofort unter **http://localhost:3000** erreichbar! 🎉
+
+---
+
+## 📋 Erste Einrichtung (nur einmal nötig)
 
 ### Voraussetzungen
 
 - Node.js 18+
-- PostgreSQL 16+
+- Supabase-Projekt (für Datenbank)
 - npm oder yarn
 
-### Setup
+### Einmaliges Setup
 
-1. Repository klonen:
+1. **Repository klonen:**
 ```bash
 git clone <repository-url>
 cd todo-app-caritas
 ```
 
-2. Dependencies installieren:
+2. **Dependencies installieren:**
 ```bash
 npm install
 ```
 
-3. Environment-Variablen konfigurieren:
+3. **Supabase-Projekt einrichten:**
+   - Gehe zu [supabase.com](https://supabase.com)
+   - Erstelle ein neues Projekt
+   - Kopiere die Keys aus Settings → API
+
+4. **Environment-Variablen konfigurieren:**
 ```bash
-cp .env.example .env
+cp env.example .env.local
 ```
 
-Bearbeite `.env` und setze deine Werte:
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/todo?schema=public"
-NEXTAUTH_URL="http://localhost:3003"
-NEXTAUTH_SECRET="dein-geheimer-schlüssel"
+Bearbeite `.env.local` und setze deine Supabase-Werte:
+```bash
+# Supabase-Konfiguration (aus Settings → API)
+SUPABASE_URL="https://ihr-projekt-ref.supabase.co"
+SUPABASE_ANON_KEY="ihr-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="ihr-service-role-key"
+SUPABASE_DB_PASSWORD="ihr-datenbank-passwort"
 
-# n8n Webhook-Konfiguration (optional)
-INBOUND_WEBHOOK_TOKEN="dein-webhook-token"
+# NextAuth-Konfiguration
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="generieren-sie-einen-sicheren-schlüssel"
+
+# Optional: n8n Webhook-Konfiguration
+INBOUND_WEBHOOK_TOKEN="ihr-webhook-token"
 PLANKA_LIST_TO_STATUS='{"Offen":"offen","In Bearbeitung":"in_bearbeitung","Erledigt":"erledigt"}'
-N8N_OUTBOUND_WEBHOOK_URL="https://dein-n8n-instanz.com/webhook/todo-app"
-N8N_OUTBOUND_TOKEN="dein-n8n-token"
+N8N_OUTBOUND_WEBHOOK_URL="https://ihre-n8n-instanz.com/webhook/todo-app"
+N8N_OUTBOUND_TOKEN="ihr-n8n-token"
 ```
 
-4. Datenbank migrieren:
+5. **Datenbank einrichten:**
 ```bash
-npx prisma migrate dev
+npm run setup-db
 ```
 
-5. Entwicklungsserver starten:
+6. **Erstmalig starten:**
 ```bash
 npm run dev
 ```
 
-Die App ist dann unter `http://localhost:3003` erreichbar.
+Die App ist dann unter **http://localhost:3000** erreichbar.
+
+## 🔧 Häufige Befehle
+
+Nach der ersten Einrichtung sind diese Befehle am wichtigsten:
+
+```bash
+# Entwicklungsserver starten
+npm run dev
+
+# Produktions-Build erstellen
+npm run build
+
+# Produktions-Server starten
+npm run start
+
+# Code-Qualität prüfen
+npm run lint
+
+# Datenbank-URL neu generieren (falls nötig)
+npm run generate-db-url
+
+# Datenbank-Setup erneut ausführen (falls nötig)
+npm run setup-db
+```
 
 ## Docker Deployment
 
