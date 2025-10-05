@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Öffentliche Routen die nicht geschützt werden müssen
-  const publicRoutes = ['/login', '/register', '/api/auth', '/api/register']
+  const publicRoutes = ['/login', '/register', '/api/auth', '/api/register', '/api/webhooks']
   
   // API-Routen die geschützt sind aber nicht weiterleiten sollen
   const apiRoutes = ['/api/tasks']
