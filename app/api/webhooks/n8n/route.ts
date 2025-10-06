@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     console.log('Webhook empfangen:', { event: body.event })
 
     // Planka-Daten extrahieren - verschiedene Event-Typen handhaben
-    let card: any, included: any, listName: string
+    let card: any, included: any, listName: string, labelData: any
     
     if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
       // Für actionCreate Events (moveCard)
@@ -41,6 +41,16 @@ export async function POST(request: NextRequest) {
       included = body.data.included
       listName = actionData.toList.name
       console.log(`Webhook: moveCard Event - Card ${card.name} von "${actionData.fromList.name}" zu "${actionData.toList.name}"`)
+    } else if (body.event === 'cardLabelCreate') {
+      // Für cardLabelCreate Events
+      card = body.data?.included?.cards?.[0]
+      included = body.data?.included
+      labelData = body.data?.included?.labels?.[0]
+      
+      // Aktuelle Liste finden
+      const currentList = included?.lists?.find((list: any) => list.id === card?.listId)
+      listName = currentList ? currentList.name : 'Unbekannt'
+      console.log(`Webhook: cardLabelCreate Event - Card ${card?.name}, Label: ${labelData?.name} (${labelData?.color})`)
     } else {
       // Für cardUpdate Events (Standard)
       card = body.data?.item
@@ -92,7 +102,20 @@ export async function POST(request: NextRequest) {
     
     const priorityLabel = getPriorityLabel(priority)
     
-    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (Label: ${priorityLabel})`)
+    // Label aus Label-Daten ableiten (für cardLabelCreate Events)
+    let labelValue = null
+    if (body.event === 'cardLabelCreate' && labelData) {
+      // Mappe Planka Label-Namen zu unseren Label-Werten
+      const labelName = labelData.name.toLowerCase()
+      if (labelName === 'dringend') labelValue = 'Dringend'
+      else if (labelName === 'mittel') labelValue = 'Mittel'
+      else if (labelName === 'offen') labelValue = 'Offen'
+      else labelValue = labelData.name // Fallback: verwende Original-Name
+      
+      console.log(`Webhook: Label gesetzt - ${labelValue} (aus Planka Label: ${labelData.name})`)
+    }
+    
+    console.log(`Webhook: Verarbeite ${body.event} - Card: ${card?.name}, Liste: ${listName}, Status: ${status}, Priorität: ${priority} (Label: ${priorityLabel}), Label: ${labelValue || 'keine'}`)
     
     // Zusätzliche Logging für actionCreate Events
     if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
@@ -136,7 +159,7 @@ export async function POST(request: NextRequest) {
             description: card?.description || '',
             status: status,
             priority: priority,
-            label: priorityLabel,
+            label: labelValue || priorityLabel, // Verwende Label-Wert oder Priority-Label als Fallback
             deadline: deadline,
             externalId: card?.id,
             userId: user.id
@@ -148,10 +171,11 @@ export async function POST(request: NextRequest) {
         
         // Bei actionCreate Events nur Priorität und Status aktualisieren
         // Bei cardUpdate Events alle Felder aktualisieren
+        // Bei cardLabelCreate Events nur Label aktualisieren
         const updateData: any = {
           status: status,
           priority: priority,
-          label: priorityLabel
+          label: labelValue || priorityLabel // Verwende Label-Wert oder Priority-Label als Fallback
         }
         
         if (body.event === 'cardUpdate') {
@@ -160,6 +184,11 @@ export async function POST(request: NextRequest) {
           updateData.description = card?.description
           updateData.deadline = deadline
           updateData.externalId = card?.id
+        }
+        
+        if (body.event === 'cardLabelCreate' && labelValue) {
+          // Nur Label bei cardLabelCreate Events aktualisieren
+          updateData.label = labelValue
         }
         
         task = await prisma.task.update({
@@ -190,6 +219,7 @@ export async function POST(request: NextRequest) {
         listName: listName,
         priority: priority,
         priorityLabel: priorityLabel,
+        label: labelValue,
         status: status
       },
       user: {

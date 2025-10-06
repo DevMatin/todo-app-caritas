@@ -44,7 +44,7 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
     },
   }
 
-  // Prioritäts-Farben
+  // Prioritäts-Farben (für Fallback)
   const priorityConfig = {
     niedrig: 'bg-gray-100 text-gray-800',
     mittel: 'bg-yellow-100 text-yellow-800',
@@ -52,11 +52,23 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
     dringend: 'bg-red-100 text-red-800',
   }
 
+  // Label-Farben (Urgency-Labels aus Planka)
+  const labelConfig = {
+    'Dringend': 'bg-red-100 text-red-800 border-red-200',
+    'Mittel': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'Offen': 'bg-green-100 text-green-800 border-green-200',
+  }
+
   // Status schnell ändern
   const handleStatusChange = async (newStatus: Task['status']) => {
     setIsUpdating(true)
     try {
-      await onUpdate(task.id, { status: newStatus })
+      // Optimistische UI-Aktualisierung: Status sofort ändern
+      const updatedTask = { ...task, status: newStatus }
+      onUpdate(task.id, { status: newStatus })
+      
+      // Kurze Verzögerung für bessere UX (optional)
+      await new Promise(resolve => setTimeout(resolve, 100))
     } finally {
       setIsUpdating(false)
     }
@@ -105,9 +117,16 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
                 <StatusIcon className="h-3 w-3 mr-1" />
                 {statusConfig[task.status as keyof typeof statusConfig].label}
               </Badge>
-              <Badge className={priorityConfig[task.priority as keyof typeof priorityConfig]}>
-                {task.priority}
-              </Badge>
+              {/* Zeige Label-Badge wenn verfügbar, sonst Prioritäts-Badge */}
+              {task.label && labelConfig[task.label as keyof typeof labelConfig] ? (
+                <Badge className={labelConfig[task.label as keyof typeof labelConfig]}>
+                  {task.label}
+                </Badge>
+              ) : (
+                <Badge className={priorityConfig[task.priority as keyof typeof priorityConfig]}>
+                  {task.priority}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex gap-1">

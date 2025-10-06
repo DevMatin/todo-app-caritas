@@ -73,11 +73,18 @@ export async function sendN8nEvent(
       return
     }
 
+    // Timeout für Webhook-Aufrufe (5 Sekunden)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       console.error(`❌ N8N Webhook-Fehler: ${response.status} ${response.statusText}`)

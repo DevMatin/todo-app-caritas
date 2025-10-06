@@ -96,20 +96,24 @@ export async function PUT(
       data: body
     })
 
-    // Events an n8n senden
+    // Events an n8n senden (asynchron, nicht blockierend)
     const taskData = createTaskData(task, user.email)
     
-    // Allgemeines Update-Event
-    await sendN8nEvent('taskUpdate', taskData, {
+    // Webhooks im Hintergrund senden (nicht await verwenden)
+    sendN8nEvent('taskUpdate', taskData, {
       changedFields,
       previous: existingTask
+    }).catch(error => {
+      console.error('Fehler beim Senden des taskUpdate Events:', error)
     })
 
     // Zusätzliches StatusChange-Event wenn Status geändert wurde
     if (changedFields.includes('status') && previousStatus !== task.status) {
-      await sendN8nEvent('taskStatusChange', taskData, {
+      sendN8nEvent('taskStatusChange', taskData, {
         changedFields: ['status'],
         previous: { status: previousStatus }
+      }).catch(error => {
+        console.error('Fehler beim Senden des taskStatusChange Events:', error)
       })
     }
 
