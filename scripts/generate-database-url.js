@@ -4,7 +4,7 @@ const path = require('path');
 
 function generateDatabaseUrl() {
   // Prüfe zuerst Environment Variables (für Vercel)
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const password = process.env.SUPABASE_DB_PASSWORD;
   
   if (supabaseUrl && password) {
@@ -48,13 +48,13 @@ function generateDatabaseUrl() {
     envFilePath = envPath;
   }
   
-  // Extrahiere SUPABASE_URL und SUPABASE_DB_PASSWORD aus .env/.env.local
-  const supabaseUrlMatch = envContent.match(/SUPABASE_URL="([^"]+)"/);
+  // Extrahiere NEXT_PUBLIC_SUPABASE_URL und SUPABASE_DB_PASSWORD aus .env/.env.local
+  const supabaseUrlMatch = envContent.match(/NEXT_PUBLIC_SUPABASE_URL="([^"]+)"/);
   const passwordMatch = envContent.match(/SUPABASE_DB_PASSWORD="([^"]+)"/);
   
   if (!supabaseUrlMatch) {
-    console.error('SUPABASE_URL nicht gefunden in Environment Variables oder .env/.env.local Datei');
-    console.error('Bitte setzen Sie SUPABASE_URL und SUPABASE_DB_PASSWORD in Vercel Environment Variables');
+    console.error('NEXT_PUBLIC_SUPABASE_URL nicht gefunden in Environment Variables oder .env/.env.local Datei');
+    console.error('Bitte setzen Sie NEXT_PUBLIC_SUPABASE_URL und SUPABASE_DB_PASSWORD in Vercel Environment Variables');
     console.error('Oder erstellen Sie eine .env.local oder .env Datei mit den echten Werten');
     process.exit(1);
   }

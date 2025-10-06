@@ -1,0 +1,9 @@
+NEXT_PUBLIC_SUPABASE_URL="https://jqxegatzjkusxihkyvwd.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxeGVnYXR6amt1c3hpaGt5dndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NDY1MDksImV4cCI6MjA3NTEyMjUwOX0.xPDzrx0fcZdzI5c30d7ncVl5e81wNzqfG8Dh88lJLV4"
+SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxeGVnYXR6amt1c3hpaGt5dndkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTU0NjUwOSwiZXhwIjoyMDc1MTIyNTA5fQ.ZA_eICl4XSNfs_ABdEsd1akTw_jn6NPZC7Sk2f69HPg"
+DATABASE_URL="postgresql://postgres:9525663Caritas!@db.jqxegatzjkusxihkyvwd.supabase.co:5432/postgres"
+INBOUND_WEBHOOK_TOKEN="dapXWZ8f5f4PGFWiEQQTqFCtGH2ft2Mp7QUYVNu+w2k="
+N8N_OUTBOUND_WEBHOOK_URL="https://your-n8n-instance.com/webhook/todo-app"
+N8N_OUTBOUND_TOKEN="dapXWZ8f5f4PGFWiEQQTqFCtGH2ft2Mp7QUYVNu+w2k="
+SUPABASE_DB_PASSWORD="9525663Caritas!"
+PLANKA_LIST_TO_STATUS='{"Priorität 1":"in_bearbeitung","Priorität 2":"offen","Priorität 3":"offen","Erledigt":"erledigt","Offen":"offen","In Bearbeitung":"in_bearbeitung"}'

@@ -6,11 +6,11 @@ async function enableRLSSecuritySupabase() {
   console.log('🔒 Aktiviere Row Level Security (RLS) für Supabase...');
   
   // Supabase Client mit Service Role Key (für Admin-Operationen)
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY müssen gesetzt sein');
+    console.error('❌ NEXT_PUBLIC_SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY müssen gesetzt sein');
     console.error('   Diese finden Sie in Supabase → Settings → API');
     process.exit(1);
   }

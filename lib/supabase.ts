@@ -1,8 +1,8 @@
 // lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Client für Client-seitige Operationen
@@ -17,8 +17,8 @@ export function getDatabaseUrl(): string {
     return process.env.DATABASE_URL
   }
   
-  // Extrahiere Project Reference aus SUPABASE_URL
-  const url = new URL(process.env.SUPABASE_URL!)
+  // Extrahiere Project Reference aus NEXT_PUBLIC_SUPABASE_URL
+  const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!)
   const projectRef = url.hostname.split('.')[0]
   
   // Generiere DATABASE_URL (Sie müssen das Passwort separat setzen)
