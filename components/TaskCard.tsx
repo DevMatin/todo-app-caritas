@@ -123,9 +123,9 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
                 {statusConfig[task.status as keyof typeof statusConfig].label}
               </Badge>
               {/* Zeige Label-Badge wenn verfügbar, sonst Prioritäts-Badge */}
-              {task.label && labelConfig[task.label as keyof typeof labelConfig] ? (
-                <Badge className={labelConfig[task.label as keyof typeof labelConfig]}>
-                  {task.label}
+              {(task as any).label && labelConfig[(task as any).label as keyof typeof labelConfig] ? (
+                <Badge className={labelConfig[(task as any).label as keyof typeof labelConfig]}>
+                  {(task as any).label}
                 </Badge>
               ) : (
                 <Badge className={priorityConfig[task.priority as keyof typeof priorityConfig]}>
