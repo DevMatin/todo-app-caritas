@@ -74,7 +74,10 @@ export default function HomePage() {
         const data = JSON.parse(event.data)
         console.log('SSE: Nachricht empfangen:', data)
 
-        if (data.type === 'task_updated') {
+        if (data.type === 'connected') {
+          console.log('SSE: Verbindung bestätigt:', data.message)
+          setSseConnected(true)
+        } else if (data.type === 'task_updated') {
           console.log('SSE: Task-Update empfangen:', data.task)
           
           // Task in der Liste aktualisieren oder hinzufügen
@@ -110,7 +113,17 @@ export default function HomePage() {
 
     eventSource.onerror = (error) => {
       console.error('SSE: Verbindungsfehler:', error)
+      console.error('SSE: EventSource readyState:', eventSource.readyState)
+      console.error('SSE: EventSource URL:', eventSource.url)
       setSseConnected(false)
+      
+      // Versuche Reconnection nach 5 Sekunden
+      setTimeout(() => {
+        if (eventSource.readyState === EventSource.CLOSED) {
+          console.log('SSE: Versuche Reconnection...')
+          eventSource.close()
+        }
+      }, 5000)
     }
 
     return () => {
