@@ -1,42 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/auth-helpers'
+import { createServerClient } from '@supabase/ssr'
 import { addConnection, removeConnection } from '@/lib/sse'
 
 // Force Node.js runtime to avoid Edge Runtime issues with Supabase
 export const runtime = 'nodejs'
 
+// Force dynamic rendering für SSE
+export const dynamic = 'force-dynamic'
+
 // SSE-Endpoint für Echtzeit-Updates
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await getAuthenticatedUser()
+    // Supabase-Client mit Request-Cookies erstellen
+    let supabaseResponse = NextResponse.next({
+      request,
+    })
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet: any[]) {
+            cookiesToSet.forEach(({ name, value, options }: any) => request.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({
+              request,
+            })
+            cookiesToSet.forEach(({ name, value, options }: any) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    // User authentifizieren
+    const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (!authResult) {
+    if (error || !user) {
+      console.log('SSE: Keine authentifizierte Session')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { dbUser } = authResult
-    console.log('SSE: Neue Verbindung für User:', dbUser.email)
+    console.log('SSE: Neue Verbindung für User:', user.email)
 
     // SSE-Stream erstellen
     const stream = new ReadableStream({
       start(controller) {
         // Verbindung speichern
-        addConnection(dbUser.id, controller)
+        addConnection(user.id, controller)
         
         // Willkommensnachricht senden
         const welcomeMessage = `data: ${JSON.stringify({
           type: 'connected',
           message: 'Verbindung hergestellt',
-          userId: dbUser.id
+          userId: user.id
         })}\n\n`
         controller.enqueue(new TextEncoder().encode(welcomeMessage))
         
-        console.log('SSE: Verbindung hergestellt für User:', dbUser.id)
+        console.log('SSE: Verbindung hergestellt für User:', user.id)
       },
       cancel() {
         // Verbindung entfernen
-        removeConnection(dbUser.id)
-        console.log('SSE: Verbindung getrennt für User:', dbUser.id)
+        removeConnection(user.id)
+        console.log('SSE: Verbindung getrennt für User:', user.id)
       }
     })
 

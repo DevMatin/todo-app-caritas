@@ -93,6 +93,15 @@ export default function HomePage() {
               return [data.task, ...prevTasks]
             }
           })
+        } else if (data.type === 'task_deleted') {
+          console.log('SSE: Task-Löschung empfangen:', data.task)
+          
+          // Task aus der Liste entfernen
+          setTasks(prevTasks => {
+            const filteredTasks = prevTasks.filter(t => t.id !== data.task.id)
+            console.log('SSE: Task entfernt aus Liste:', data.task.title)
+            return filteredTasks
+          })
         }
       } catch (error) {
         console.error('SSE: Fehler beim Verarbeiten der Nachricht:', error)

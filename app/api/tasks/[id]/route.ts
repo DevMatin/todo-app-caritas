@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendN8nEvent, createTaskData, getChangedFields } from '@/lib/webhook'
+import { broadcastUpdate } from '@/lib/sse'
 
 // Force Node.js runtime to avoid Edge Runtime issues with Prisma and Supabase
 export const runtime = 'nodejs'
@@ -100,6 +101,33 @@ export async function PUT(
       })
     }
 
+    // SSE-Update an Frontend senden
+    try {
+      broadcastUpdate(dbUser.id, {
+        type: 'task_updated',
+        task: {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          label: task.label,
+          deadline: task.deadline,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          externalId: task.externalId,
+          userId: task.userId
+        },
+        event: 'taskUpdate',
+        changedFields,
+        previous: existingTask,
+        timestamp: new Date().toISOString()
+      })
+      console.log('SSE: Task-Update gesendet für User:', dbUser.id)
+    } catch (sseError) {
+      console.error('SSE: Fehler beim Senden des Task-Update Updates:', sseError)
+    }
+
     return NextResponse.json(task)
   } catch (error) {
     console.error('Fehler beim Aktualisieren der Aufgabe:', error)
@@ -144,6 +172,31 @@ export async function DELETE(
 
     // Delete-Event an n8n senden
     await sendN8nEvent('taskDelete', taskData)
+
+    // SSE-Update an Frontend senden
+    try {
+      broadcastUpdate(dbUser.id, {
+        type: 'task_deleted',
+        task: {
+          id: existingTask.id,
+          title: existingTask.title,
+          description: existingTask.description,
+          status: existingTask.status,
+          priority: existingTask.priority,
+          label: existingTask.label,
+          deadline: existingTask.deadline,
+          createdAt: existingTask.createdAt,
+          updatedAt: existingTask.updatedAt,
+          externalId: existingTask.externalId,
+          userId: existingTask.userId
+        },
+        event: 'taskDelete',
+        timestamp: new Date().toISOString()
+      })
+      console.log('SSE: Task-Löschung Update gesendet für User:', dbUser.id)
+    } catch (sseError) {
+      console.error('SSE: Fehler beim Senden des Task-Löschung Updates:', sseError)
+    }
 
     return NextResponse.json({ message: 'Aufgabe erfolgreich gelöscht' })
   } catch (error) {

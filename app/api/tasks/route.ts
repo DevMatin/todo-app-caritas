@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendN8nEvent, createTaskData } from '@/lib/webhook'
+import { broadcastUpdate } from '@/lib/sse'
 
 // Force Node.js runtime to avoid Edge Runtime issues with Prisma and Supabase
 export const runtime = 'nodejs'
@@ -63,6 +64,31 @@ export async function POST(request: NextRequest) {
     // Event an n8n senden
     const taskData = createTaskData(task, dbUser.email)
     await sendN8nEvent('taskCreate', taskData)
+
+    // SSE-Update an Frontend senden
+    try {
+      broadcastUpdate(dbUser.id, {
+        type: 'task_updated',
+        task: {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          label: task.label,
+          deadline: task.deadline,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          externalId: task.externalId,
+          userId: task.userId
+        },
+        event: 'taskCreate',
+        timestamp: new Date().toISOString()
+      })
+      console.log('SSE: Task-Erstellung Update gesendet für User:', dbUser.id)
+    } catch (sseError) {
+      console.error('SSE: Fehler beim Senden des Task-Erstellung Updates:', sseError)
+    }
 
     return NextResponse.json(task, { status: 201 })
   } catch (error) {
