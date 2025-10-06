@@ -5,20 +5,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Prisma Client für lokale Entwicklung mit SQLite
+// Prisma Client für lokale Entwicklung und Produktion
 function createPrismaClient() {
   console.log('Prisma: NODE_ENV:', process.env.NODE_ENV)
   
-  // Für lokale Entwicklung: SQLite verwenden
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Prisma: Verwende SQLite für lokale Entwicklung')
-    return new PrismaClient({
-      log: ['error', 'warn', 'query'],
-      errorFormat: 'pretty',
-    })
-  }
-  
-  // Für Produktion: PostgreSQL/Supabase verwenden
   const databaseUrl = process.env.DATABASE_URL
   console.log('Prisma: DATABASE_URL vorhanden:', !!databaseUrl)
   
@@ -26,6 +16,23 @@ function createPrismaClient() {
     console.error('Prisma: DATABASE_URL ist nicht gesetzt!')
     throw new Error('DATABASE_URL environment variable is not set')
   }
+  
+  // Für lokale Entwicklung: Verwende direkte PostgreSQL-Verbindung
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Prisma: Verwende PostgreSQL für lokale Entwicklung')
+    return new PrismaClient({
+      log: ['error', 'warn', 'query'],
+      errorFormat: 'pretty',
+      datasources: {
+        db: {
+          url: databaseUrl,
+        },
+      },
+    })
+  }
+  
+  // Für Produktion: PostgreSQL/Supabase mit Connection Pooling
+  console.log('Prisma: Verwende PostgreSQL für Produktion')
   
   // Füge Connection Pooling Parameter hinzu für Supabase
   let optimizedUrl = databaseUrl
