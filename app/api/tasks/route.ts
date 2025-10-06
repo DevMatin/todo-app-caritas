@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
-import { createClient } from '@supabase/supabase-js'
+import { prisma } from '@/lib/prisma'
 import { sendN8nEvent, createTaskData } from '@/lib/webhook'
 
 // GET /api/tasks - Alle Aufgaben des eingeloggten Users abrufen
@@ -16,22 +16,15 @@ export async function GET() {
     const { dbUser } = authResult
     console.log('API /tasks - Authentifizierter User:', dbUser.email)
 
-    // Verwende Supabase-Client für Datenbank-Operationen
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: tasks, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', dbUser.id)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Supabase-Fehler beim Laden der Aufgaben:', error)
-      throw error
-    }
+    // Verwende Prisma für Datenbank-Operationen
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: dbUser.id
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    })
 
     console.log('API /tasks - Gefundene Aufgaben:', tasks.length) // Debug-Log
     return NextResponse.json(tasks)
@@ -56,27 +49,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     
-    // Verwende Supabase-Client für Datenbank-Operationen
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: task, error } = await supabase
-      .from('tasks')
-      .insert({
+    // Verwende Prisma für Datenbank-Operationen
+    const task = await prisma.task.create({
+      data: {
         ...body,
-        user_id: dbUser.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Supabase-Fehler beim Erstellen der Aufgabe:', error)
-      throw error
-    }
+        userId: dbUser.id
+      }
+    })
 
     // Event an n8n senden
     const taskData = createTaskData(task, dbUser.email)

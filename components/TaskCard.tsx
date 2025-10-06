@@ -229,12 +229,12 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
         <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            Erstellt: {formatDate(task.created_at || task.createdAt)}
+            Erstellt: {formatDate(task.createdAt)}
           </div>
-          {(task.updated_at || task.updatedAt) !== (task.created_at || task.createdAt) && (
+          {task.updatedAt !== task.createdAt && (
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Aktualisiert: {formatDate(task.updated_at || task.updatedAt)}
+              Aktualisiert: {formatDate(task.updatedAt)}
             </div>
           )}
         </div>
