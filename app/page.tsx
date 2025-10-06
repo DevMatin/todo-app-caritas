@@ -139,14 +139,14 @@ export default function HomePage() {
           startPolling()
         }
         
-        // Versuche Reconnection nach 10 Sekunden
+        // Versuche Reconnection nach 5 Sekunden (schneller für Vercel)
         reconnectTimeout = setTimeout(() => {
           if (eventSource?.readyState === EventSource.CLOSED) {
             console.log('SSE: Versuche Reconnection...')
             eventSource.close()
             startSSE()
           }
-        }, 10000)
+        }, 5000)
       }
     }
 
