@@ -19,7 +19,7 @@ export function broadcastUpdate(userId: string, data: any) {
 
 // Funktion zum Senden von Updates an alle verbundenen Clients
 export function broadcastToAll(data: any) {
-  for (const [userId, controller] of connections.entries()) {
+  connections.forEach((controller, userId) => {
     try {
       const message = `data: ${JSON.stringify(data)}\n\n`
       controller.enqueue(new TextEncoder().encode(message))
@@ -29,7 +29,7 @@ export function broadcastToAll(data: any) {
       // Verbindung entfernen bei Fehler
       connections.delete(userId)
     }
-  }
+  })
 }
 
 // Funktion zum Hinzufügen einer neuen Verbindung
