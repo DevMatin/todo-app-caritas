@@ -10,6 +10,15 @@ export const runtime = 'nodejs'
 // GET /api/tasks - Alle Aufgaben des eingeloggten Users abrufen
 export async function GET() {
   try {
+    console.log('API /tasks - Starte GET-Request')
+    
+    // Prüfe Umgebungsvariablen
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('API /tasks - Supabase-Umgebungsvariablen fehlen')
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    }
+    
+    console.log('API /tasks - Versuche Authentifizierung...')
     const authResult = await getAuthenticatedUser()
     
     if (!authResult) {
@@ -21,6 +30,7 @@ export async function GET() {
     console.log('API /tasks - Authentifizierter User:', dbUser.email)
 
     // Verwende Prisma für Datenbank-Operationen
+    console.log('API /tasks - Starte Datenbankabfrage...')
     const tasks = await prisma.task.findMany({
       where: {
         userId: dbUser.id
@@ -33,8 +43,16 @@ export async function GET() {
     console.log('API /tasks - Gefundene Aufgaben:', tasks.length) // Debug-Log
     return NextResponse.json(tasks)
   } catch (error) {
-    console.error('Fehler beim Laden der Aufgaben:', error)
-    return NextResponse.json({ error: 'Fehler beim Laden der Aufgaben' }, { status: 500 })
+    console.error('API /tasks - Fehler beim Laden der Aufgaben:', error)
+    console.error('API /tasks - Fehler-Details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
+    return NextResponse.json({ 
+      error: 'Fehler beim Laden der Aufgaben',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 })
   }
 }
 

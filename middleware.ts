@@ -99,6 +99,6 @@ export const config = {
      * - api/webhooks (webhook routes)
      * - api/tasks (tasks API routes - handle their own auth)
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/webhooks|api/tasks|api/events|api/test-sse|test-sse).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/auth|api/webhooks|api/tasks|api/events|api/test-sse|api/test-db|test-sse).*)',
   ],
 }

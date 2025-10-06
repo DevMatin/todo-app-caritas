@@ -5,28 +5,42 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Prisma Client für Supabase optimiert
+// Prisma Client für lokale Entwicklung mit SQLite
 function createPrismaClient() {
-  // Optimiere DATABASE_URL für Supabase
-  let databaseUrl = process.env.DATABASE_URL
+  console.log('Prisma: NODE_ENV:', process.env.NODE_ENV)
+  
+  // Für lokale Entwicklung: SQLite verwenden
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Prisma: Verwende SQLite für lokale Entwicklung')
+    return new PrismaClient({
+      log: ['error', 'warn', 'query'],
+      errorFormat: 'pretty',
+    })
+  }
+  
+  // Für Produktion: PostgreSQL/Supabase verwenden
+  const databaseUrl = process.env.DATABASE_URL
+  console.log('Prisma: DATABASE_URL vorhanden:', !!databaseUrl)
+  
+  if (!databaseUrl) {
+    console.error('Prisma: DATABASE_URL ist nicht gesetzt!')
+    throw new Error('DATABASE_URL environment variable is not set')
+  }
   
   // Füge Connection Pooling Parameter hinzu für Supabase
+  let optimizedUrl = databaseUrl
   if (databaseUrl && !databaseUrl.includes('pgbouncer')) {
     // Verwende Supabase Connection Pooling
-    databaseUrl = databaseUrl.replace('postgresql://', 'postgresql://') + '?pgbouncer=true&connection_limit=1'
+    optimizedUrl = databaseUrl.replace('postgresql://', 'postgresql://') + '?pgbouncer=true&connection_limit=1'
   }
 
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    log: ['error'],
     datasources: {
       db: {
-        url: databaseUrl,
+        url: optimizedUrl,
       },
     },
-    // Verhindere prepared statement Konflikte in Development
-    ...(process.env.NODE_ENV === 'development' && {
-      errorFormat: 'pretty',
-    }),
   })
 }
 
