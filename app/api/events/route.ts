@@ -52,5 +52,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Re-export der SSE-Funktionen für Kompatibilität
-export { broadcastUpdate, broadcastToAll } from '@/lib/sse'
