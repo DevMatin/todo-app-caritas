@@ -21,6 +21,7 @@ export default function HomePage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filter, setFilter] = useState<'prio1' | 'prio2' | 'prio3'>('prio1')
   const [sseConnected, setSseConnected] = useState(false)
+  const [isPolling, setIsPolling] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -57,79 +58,142 @@ export default function HomePage() {
     }
   }
 
-  // SSE-Verbindung für Echtzeit-Updates
+  // SSE-Verbindung für Echtzeit-Updates mit Fallback
   useEffect(() => {
     if (!user) return
 
-    console.log('SSE: Verbindung wird hergestellt für User:', user.email)
-    const eventSource = new EventSource('/api/events')
+    let eventSource: EventSource | null = null
+    let pollingInterval: NodeJS.Timeout | null = null
+    let reconnectTimeout: NodeJS.Timeout | null = null
+    let isPolling = false
 
-    eventSource.onopen = () => {
-      console.log('SSE: Verbindung hergestellt')
-      setSseConnected(true)
-    }
+    const startSSE = () => {
+      console.log('SSE: Verbindung wird hergestellt für User:', user.email)
+      eventSource = new EventSource('/api/events')
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log('SSE: Nachricht empfangen:', data)
-
-        if (data.type === 'connected') {
-          console.log('SSE: Verbindung bestätigt:', data.message)
-          setSseConnected(true)
-        } else if (data.type === 'task_updated') {
-          console.log('SSE: Task-Update empfangen:', data.task)
-          
-          // Task in der Liste aktualisieren oder hinzufügen
-          setTasks(prevTasks => {
-            const existingIndex = prevTasks.findIndex(t => t.id === data.task.id)
-            
-            if (existingIndex >= 0) {
-              // Task aktualisieren
-              const updatedTasks = [...prevTasks]
-              updatedTasks[existingIndex] = data.task
-              console.log('SSE: Task aktualisiert in Liste:', data.task.title)
-              return updatedTasks
-            } else {
-              // Neue Task hinzufügen
-              console.log('SSE: Neue Task hinzugefügt zur Liste:', data.task.title)
-              return [data.task, ...prevTasks]
-            }
-          })
-        } else if (data.type === 'task_deleted') {
-          console.log('SSE: Task-Löschung empfangen:', data.task)
-          
-          // Task aus der Liste entfernen
-          setTasks(prevTasks => {
-            const filteredTasks = prevTasks.filter(t => t.id !== data.task.id)
-            console.log('SSE: Task entfernt aus Liste:', data.task.title)
-            return filteredTasks
-          })
+      eventSource.onopen = () => {
+        console.log('SSE: Verbindung hergestellt')
+        setSseConnected(true)
+        isPolling = false
+        
+        // Stoppe Polling falls aktiv
+        if (pollingInterval) {
+          clearInterval(pollingInterval)
+          pollingInterval = null
+          setIsPolling(false)
         }
-      } catch (error) {
-        console.error('SSE: Fehler beim Verarbeiten der Nachricht:', error)
+      }
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('SSE: Nachricht empfangen:', data)
+
+          if (data.type === 'connected') {
+            console.log('SSE: Verbindung bestätigt:', data.message)
+            setSseConnected(true)
+          } else if (data.type === 'task_updated') {
+            console.log('SSE: Task-Update empfangen:', data.task)
+            
+            // Task in der Liste aktualisieren oder hinzufügen
+            setTasks(prevTasks => {
+              const existingIndex = prevTasks.findIndex(t => t.id === data.task.id)
+              
+              if (existingIndex >= 0) {
+                // Task aktualisieren
+                const updatedTasks = [...prevTasks]
+                updatedTasks[existingIndex] = data.task
+                console.log('SSE: Task aktualisiert in Liste:', data.task.title)
+                return updatedTasks
+              } else {
+                // Neue Task hinzufügen
+                console.log('SSE: Neue Task hinzugefügt zur Liste:', data.task.title)
+                return [data.task, ...prevTasks]
+              }
+            })
+          } else if (data.type === 'task_deleted') {
+            console.log('SSE: Task-Löschung empfangen:', data.task)
+            
+            // Task aus der Liste entfernen
+            setTasks(prevTasks => {
+              const filteredTasks = prevTasks.filter(t => t.id !== data.task.id)
+              console.log('SSE: Task entfernt aus Liste:', data.task.title)
+              return filteredTasks
+            })
+          }
+        } catch (error) {
+          console.error('SSE: Fehler beim Verarbeiten der Nachricht:', error)
+        }
+      }
+
+      eventSource.onerror = (error) => {
+        console.error('SSE: Verbindungsfehler:', error)
+        console.error('SSE: EventSource readyState:', eventSource?.readyState)
+        console.error('SSE: EventSource URL:', eventSource?.url)
+        setSseConnected(false)
+        
+        // Starte Polling als Fallback
+        if (!isPolling) {
+          console.log('SSE: Starte Polling-Fallback...')
+          setIsPolling(true)
+          startPolling()
+        }
+        
+        // Versuche Reconnection nach 10 Sekunden
+        reconnectTimeout = setTimeout(() => {
+          if (eventSource?.readyState === EventSource.CLOSED) {
+            console.log('SSE: Versuche Reconnection...')
+            eventSource.close()
+            startSSE()
+          }
+        }, 10000)
       }
     }
 
-    eventSource.onerror = (error) => {
-      console.error('SSE: Verbindungsfehler:', error)
-      console.error('SSE: EventSource readyState:', eventSource.readyState)
-      console.error('SSE: EventSource URL:', eventSource.url)
-      setSseConnected(false)
+    const startPolling = () => {
+      if (isPolling) return
       
-      // Versuche Reconnection nach 5 Sekunden
-      setTimeout(() => {
-        if (eventSource.readyState === EventSource.CLOSED) {
-          console.log('SSE: Versuche Reconnection...')
-          eventSource.close()
+      isPolling = true
+      console.log('SSE: Starte Polling-Fallback (alle 5 Sekunden)')
+      
+      pollingInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/api/tasks')
+          if (response.ok) {
+            const data = await response.json()
+            const tasksArray = Array.isArray(data) ? data : []
+            
+            setTasks(prevTasks => {
+              // Nur aktualisieren wenn sich etwas geändert hat
+              if (JSON.stringify(prevTasks) !== JSON.stringify(tasksArray)) {
+                console.log('Polling: Tasks aktualisiert')
+                return tasksArray
+              }
+              return prevTasks
+            })
+          }
+        } catch (error) {
+          console.error('Polling: Fehler beim Abrufen der Tasks:', error)
         }
       }, 5000)
     }
 
+    // Starte SSE-Verbindung
+    startSSE()
+
     return () => {
       console.log('SSE: Verbindung wird getrennt')
-      eventSource.close()
+      if (eventSource) {
+        eventSource.close()
+      }
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout)
+      }
       setSseConnected(false)
+      setIsPolling(false)
     }
   }, [user])
 
@@ -293,9 +357,15 @@ export default function HomePage() {
                 </span>
                 {/* SSE-Verbindungsstatus */}
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${sseConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${
+                    sseConnected ? 'bg-green-400' : 
+                    isPolling ? 'bg-yellow-400' : 
+                    'bg-red-400'
+                  }`}></div>
                   <span className="text-xs text-green-100">
-                    {sseConnected ? 'Live' : 'Offline'}
+                    {sseConnected ? 'Live' : 
+                     isPolling ? 'Polling' : 
+                     'Offline'}
                   </span>
                 </div>
                 <Button

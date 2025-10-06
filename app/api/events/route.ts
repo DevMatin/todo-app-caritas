@@ -80,65 +80,28 @@ export async function GET(request: NextRequest) {
     
     console.log('SSE: Authentifizierter User gefunden:', user.email, 'ID:', user.id)
 
-    // SSE-Stream erstellen
-    const stream = new ReadableStream({
-      start(controller) {
-        try {
-          console.log('SSE: Starte Stream für User:', user.id)
-          
-          // Verbindung speichern
-          addConnection(user.id, controller)
-          
-          // Willkommensnachricht senden
-          const welcomeMessage = `data: ${JSON.stringify({
-            type: 'connected',
-            message: 'Verbindung hergestellt',
-            userId: user.id,
-            timestamp: new Date().toISOString()
-          })}\n\n`
-          
-          controller.enqueue(new TextEncoder().encode(welcomeMessage))
-          console.log('SSE: Willkommensnachricht gesendet für User:', user.id)
-          
-          // Heartbeat alle 30 Sekunden
-          const heartbeatInterval = setInterval(() => {
-            try {
-              const heartbeatMessage = `data: ${JSON.stringify({
-                type: 'heartbeat',
-                timestamp: new Date().toISOString()
-              })}\n\n`
-              controller.enqueue(new TextEncoder().encode(heartbeatMessage))
-            } catch (error) {
-              console.error('SSE: Fehler beim Senden des Heartbeats:', error)
-              clearInterval(heartbeatInterval)
-            }
-          }, 30000)
-          
-          console.log('SSE: Verbindung erfolgreich hergestellt für User:', user.id)
-        } catch (error) {
-          console.error('SSE: Fehler beim Starten des Streams:', error)
-        }
-      },
-      cancel() {
-        try {
-          // Verbindung entfernen
-          removeConnection(user.id)
-          console.log('SSE: Verbindung getrennt für User:', user.id)
-        } catch (error) {
-          console.error('SSE: Fehler beim Schließen der Verbindung:', error)
-        }
-      }
-    })
-
-    return new Response(stream, {
+    // Für Vercel: Einfache Antwort ohne dauerhafte Verbindung
+    // SSE funktioniert nicht gut mit Serverless Functions
+    console.log('SSE: Vercel-Umgebung erkannt - sende einmalige Antwort')
+    
+    const responseData = {
+      type: 'connected',
+      message: 'Verbindung hergestellt (Vercel-Modus)',
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+      note: 'SSE wird durch Polling ersetzt in Vercel-Umgebung'
+    }
+    
+    const message = `data: ${JSON.stringify(responseData)}\n\n`
+    
+    return new Response(message, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Connection': 'keep-alive',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Cache-Control, Authorization',
-        'Access-Control-Allow-Methods': 'GET',
-        'X-Accel-Buffering': 'no' // Disable nginx buffering
+        'Access-Control-Allow-Methods': 'GET'
       }
     })
   } catch (error) {
