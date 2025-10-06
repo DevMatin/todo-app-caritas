@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { addConnection, removeConnection } from '@/lib/sse'
 
+// Force Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs'
+
 // SSE-Endpoint für Echtzeit-Updates
 export async function GET(request: NextRequest) {
   try {

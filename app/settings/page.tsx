@@ -9,6 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, User, Lock, Mail } from 'lucide-react'
 
+// Force dynamic rendering to avoid static generation issues with cookies
+export const dynamic = 'force-dynamic'
+
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)

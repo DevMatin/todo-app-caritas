@@ -3,6 +3,9 @@ import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendN8nEvent, createTaskData, getChangedFields } from '@/lib/webhook'
 
+// Force Node.js runtime to avoid Edge Runtime issues with Prisma and Supabase
+export const runtime = 'nodejs'
+
 // GET /api/tasks/[id] - Einzelne Aufgabe abrufen
 export async function GET(
   request: NextRequest,

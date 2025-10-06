@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
 import { broadcastUpdate } from '@/lib/sse'
 
+// Force Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs'
+
 // GET /api/webhooks/n8n - Health Check
 export async function GET(request: NextRequest) {
   return NextResponse.json({ 

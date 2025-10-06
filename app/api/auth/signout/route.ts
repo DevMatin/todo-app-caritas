@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
 
+// Force Node.js runtime to avoid Edge Runtime issues with Supabase
+export const runtime = 'nodejs'
+
 export async function POST() {
   const supabase = createClient()
   

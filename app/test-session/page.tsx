@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase-client'
 import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 
+// Force dynamic rendering to avoid static generation issues with cookies
+export const dynamic = 'force-dynamic'
+
 export default function TestSessionPage() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)

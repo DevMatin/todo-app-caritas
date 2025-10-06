@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Plus, LogOut, Settings } from 'lucide-react'
 import { User } from '@supabase/supabase-js'
 
+// Force dynamic rendering to avoid static generation issues with cookies
+export const dynamic = 'force-dynamic'
+
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
