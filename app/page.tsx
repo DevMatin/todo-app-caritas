@@ -1,25 +1,30 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession, signOut } from 'next-auth/react'
+import { createClient } from '@/lib/supabase-client'
+import { useRouter } from 'next/navigation'
 import { Task } from '@prisma/client'
 import { TaskCard } from '@/components/TaskCard'
 import { TaskModal } from '@/components/TaskModal'
 import { Button } from '@/components/ui/button'
-import { Plus, LogOut } from 'lucide-react'
+import { Plus, LogOut, Settings } from 'lucide-react'
+import { User } from '@supabase/supabase-js'
 
 export default function HomePage() {
-  const { data: session, status } = useSession()
+  const [user, setUser] = useState<User | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [filter, setFilter] = useState<'prio1' | 'prio2' | 'prio3'>('prio1')
+  const [sseConnected, setSseConnected] = useState(false)
+  const router = useRouter()
+  const supabase = createClient()
 
   // Aufgaben laden
   const fetchTasks = async () => {
-    if (!session) {
-      console.log('Keine Session vorhanden, überspringe Aufgaben-Laden')
+    if (!user) {
+      console.log('Keine User-Session vorhanden, überspringe Aufgaben-Laden')
       setLoading(false)
       return
     }
@@ -32,7 +37,14 @@ export default function HomePage() {
       const data = await response.json()
       // Sicherstellen, dass data ein Array ist
       const tasksArray = Array.isArray(data) ? data : []
-      console.log('Geladene Aufgaben:', tasksArray) // Debug-Log
+      console.log('Geladene Aufgaben:', tasksArray.length, 'Aufgaben') // Debug-Log
+      console.log('Aufgaben-Details:', tasksArray.map(task => ({
+        id: task.id,
+        title: task.title,
+        priority: task.priority,
+        label: task.label,
+        status: task.status
+      })))
       setTasks(tasksArray)
     } catch (error) {
       console.error('Fehler beim Laden der Aufgaben:', error)
@@ -42,21 +54,75 @@ export default function HomePage() {
     }
   }
 
+  // SSE-Verbindung für Echtzeit-Updates
   useEffect(() => {
-    if (status === 'loading') {
-      // Session wird noch geladen
-      return
+    if (!user) return
+
+    console.log('SSE: Verbindung wird hergestellt für User:', user.email)
+    const eventSource = new EventSource('/api/events')
+
+    eventSource.onopen = () => {
+      console.log('SSE: Verbindung hergestellt')
+      setSseConnected(true)
     }
-    
-    if (status === 'unauthenticated') {
-      // Benutzer ist nicht angemeldet
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log('SSE: Nachricht empfangen:', data)
+
+        if (data.type === 'task_updated') {
+          console.log('SSE: Task-Update empfangen:', data.task)
+          
+          // Task in der Liste aktualisieren oder hinzufügen
+          setTasks(prevTasks => {
+            const existingIndex = prevTasks.findIndex(t => t.id === data.task.id)
+            
+            if (existingIndex >= 0) {
+              // Task aktualisieren
+              const updatedTasks = [...prevTasks]
+              updatedTasks[existingIndex] = data.task
+              console.log('SSE: Task aktualisiert in Liste:', data.task.title)
+              return updatedTasks
+            } else {
+              // Neue Task hinzufügen
+              console.log('SSE: Neue Task hinzugefügt zur Liste:', data.task.title)
+              return [data.task, ...prevTasks]
+            }
+          })
+        }
+      } catch (error) {
+        console.error('SSE: Fehler beim Verarbeiten der Nachricht:', error)
+      }
+    }
+
+    eventSource.onerror = (error) => {
+      console.error('SSE: Verbindungsfehler:', error)
+      setSseConnected(false)
+    }
+
+    return () => {
+      console.log('SSE: Verbindung wird getrennt')
+      eventSource.close()
+      setSseConnected(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
       setLoading(false)
-      return
     }
     
-    // Session ist verfügbar, Aufgaben laden
-    fetchTasks()
-  }, [session, status])
+    getUser()
+  }, [supabase.auth])
+
+  useEffect(() => {
+    if (user) {
+      fetchTasks()
+    }
+  }, [user])
 
   // Aufgabe aktualisieren
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
@@ -127,23 +193,39 @@ export default function HomePage() {
     const matches = (() => {
       switch (filter) {
         case 'prio1':
-          return task.priority === 'Priorität 1' || task.priority === 'hoch' || task.priority === 'dringend'
+          return task.priority === 'Priorität 1' || 
+                 task.priority === 'hoch' || 
+                 task.priority === 'dringend' ||
+                 task.label === 'Dringend'
         case 'prio2':
-          return task.priority === 'Priorität 2' || task.priority === 'mittel'
+          return task.priority === 'Priorität 2' || 
+                 task.priority === 'mittel' ||
+                 task.label === 'Mittel'
         case 'prio3':
-          return task.priority === 'Priorität 3' || task.priority === 'niedrig'
+          return task.priority === 'Priorität 3' || 
+                 task.priority === 'niedrig' ||
+                 task.label === 'Offen'
         default:
           return true
       }
     })()
     
-    console.log(`Task "${task.title}" mit Priorität "${task.priority}" für Filter "${filter}": ${matches}`)
+    console.log(`Task "${task.title}" mit Priorität "${task.priority}" und Label "${task.label}" für Filter "${filter}": ${matches}`)
     return matches
   }
   
   // Aufteilen in aktive und erledigte Aufgaben
   const activeTasks = safeTasks.filter(task => task && task.status !== 'erledigt' && matchesFilter(task))
   const completedTasks = safeTasks.filter(task => task && task.status === 'erledigt' && matchesFilter(task))
+  
+  // Debug-Ausgaben für gefilterte Aufgaben
+  console.log(`Filter "${filter}" - Aktive Aufgaben: ${activeTasks.length}, Erledigte: ${completedTasks.length}`)
+  console.log('Aktive Aufgaben:', activeTasks.map(task => ({
+    title: task.title,
+    priority: task.priority,
+    label: task.label,
+    status: task.status
+  })))
 
   if (loading) {
     return (
@@ -157,13 +239,13 @@ export default function HomePage() {
   }
 
   // Wenn Benutzer nicht angemeldet ist
-  if (status === 'unauthenticated') {
+  if (!loading && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Nicht angemeldet</h1>
           <p className="text-gray-600 mb-6">Sie müssen sich anmelden, um Ihre Aufgaben zu sehen.</p>
-          <Button onClick={() => window.location.href = '/login'}>
+          <Button onClick={() => router.push('/login')}>
             Zur Anmeldung
           </Button>
         </div>
@@ -182,12 +264,31 @@ export default function HomePage() {
               <h1 className="text-4xl font-bold text-white">Todo App Caritas</h1>
               <div className="flex items-center gap-4">
                 <span className="text-sm text-green-100">
-                  Hallo, {session?.user?.name || session?.user?.email}
+                  Hallo, {user?.user_metadata?.name || user?.email}
                 </span>
+                {/* SSE-Verbindungsstatus */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${sseConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                  <span className="text-xs text-green-100">
+                    {sseConnected ? 'Live' : 'Offline'}
+                  </span>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => signOut()}
+                  onClick={() => router.push('/settings')}
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Einstellungen
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await supabase.auth.signOut()
+                    router.push('/login')
+                  }}
                   className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 >
                   <LogOut className="h-4 w-4 mr-2" />

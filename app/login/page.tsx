@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase-client'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,31 +13,47 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Prüfen ob eine Nachricht von der Registrierung vorhanden ist
+    const message = searchParams.get('message')
+    if (message) {
+      setMessage(message)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setMessage('')
 
     try {
-      const result = await signIn('credentials', {
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        redirect: false,
-        callbackUrl: '/',
       })
 
-      if (result?.error) {
-        console.log('Login-Fehler:', result.error)
-        setError('Ungültige Anmeldedaten')
+      if (error) {
+        console.log('Login-Fehler:', error.message)
+        if (error.message.includes('Invalid login credentials')) {
+          setError('Ungültige E-Mail oder Passwort')
+        } else if (error.message.includes('Email not confirmed')) {
+          setError('Bitte bestätigen Sie Ihre E-Mail-Adresse')
+        } else {
+          setError(error.message)
+        }
       } else {
-        console.log('Login erfolgreich, weiterleitung zu /')
-        console.log('Login-Result:', result)
-        // Sofortige Weiterleitung ohne Verzögerung
-        window.location.href = '/'
+        console.log('Login erfolgreich:', data.user?.email)
+        // Weiterleitung zur Hauptseite
+        router.push('/')
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Login-Fehler:', error)
       setError('Ein Fehler ist aufgetreten')
     } finally {
       setIsLoading(false)
@@ -82,6 +98,11 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+            {message && (
+              <div className="text-green-600 text-sm text-center">
+                {message}
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full text-white"
@@ -91,7 +112,7 @@ export default function LoginPage() {
               {isLoading ? 'Anmelden...' : 'Anmelden'}
             </Button>
           </form>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-2">
             <p className="text-sm text-gray-600">
               Noch kein Konto?{' '}
               <a
@@ -100,6 +121,16 @@ export default function LoginPage() {
                 style={{ color: '#d21c1a' }}
               >
                 Hier registrieren
+              </a>
+            </p>
+            <p className="text-sm text-gray-600">
+              Passwort vergessen?{' '}
+              <a
+                href="/forgot-password"
+                className="font-medium"
+                style={{ color: '#d21c1a' }}
+              >
+                Zurücksetzen
               </a>
             </p>
           </div>

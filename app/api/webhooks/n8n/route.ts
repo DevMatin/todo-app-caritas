@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
+import { v4 as uuidv4 } from 'uuid'
+import { broadcastUpdate } from '@/lib/sse'
 
 // GET /api/webhooks/n8n - Health Check
 export async function GET(request: NextRequest) {
@@ -24,11 +26,25 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     console.log('Webhook empfangen:', { event: body.event })
+    console.log('Webhook: VOLLSTÄNDIGE n8n-DATEN:', JSON.stringify(body, null, 2))
+    
+    // Zusätzliche Debugging-Informationen
+    console.log('Webhook: Body-Keys:', Object.keys(body))
+    console.log('Webhook: Hat body.card?', !!body.card)
+    console.log('Webhook: Hat body.data?', !!body.data)
+    console.log('Webhook: Hat body.user?', !!body.user)
+    console.log('Webhook: Event-Typ:', body.event)
 
     // Planka-Daten extrahieren - verschiedene Event-Typen handhaben
     let card: any, included: any, listName: string, labelData: any
     
-    if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
+    // Prüfe ob n8n-Daten direkt im body stehen (nicht in body.data)
+    if (body.card && body.user) {
+      console.log('Webhook: n8n-Daten erkannt - verarbeite direktes Format')
+      card = body.card
+      listName = body.card.listName || body.card.priority
+      console.log(`Webhook: n8n-Format - Card: ${card.name}, Liste: ${listName}`)
+    } else if (body.event === 'actionCreate' && body.data?.item?.type === 'moveCard') {
       // Für actionCreate Events (moveCard)
       const actionData = body.data.item.data
       card = {
@@ -123,91 +139,7 @@ export async function POST(request: NextRequest) {
       console.log(`Webhook: moveCard Details - Von: "${actionData.fromList.name}" (${actionData.fromList.id}) zu: "${actionData.toList.name}" (${actionData.toList.id})`)
     }
 
-    // Versuche Datenbank-Operationen
-    let task = null
-    try {
-      // User finden oder erstellen
-      let user = await prisma.user.findUnique({
-        where: { email: body.user?.email }
-      })
-
-      if (!user) {
-        console.log(`Webhook: User nicht gefunden - erstelle neuen User für E-Mail: ${body.user?.email}`)
-        user = await prisma.user.create({
-          data: {
-            email: body.user?.email,
-            name: body.user?.name || body.user?.email?.split('@')[0],
-            password: 'webhook-user' // Dummy-Passwort
-          }
-        })
-        console.log(`Webhook: Neuer User erstellt - ID: ${user.id}`)
-      }
-
-      // Task finden oder erstellen
-      task = await prisma.task.findFirst({
-        where: {
-          externalId: card?.id,
-          userId: user.id
-        }
-      })
-
-      if (!task) {
-        console.log(`Webhook: Task nicht gefunden - erstelle neue Task für Card: ${card?.name}`)
-        task = await prisma.task.create({
-          data: {
-            title: card?.name,
-            description: card?.description || '',
-            status: status,
-            priority: priority,
-            label: labelValue || priorityLabel, // Verwende Label-Wert oder Priority-Label als Fallback
-            deadline: deadline,
-            externalId: card?.id,
-            userId: user.id
-          }
-        })
-        console.log(`Webhook: Neue Task erstellt - ID: ${task.id}`)
-      } else {
-        console.log(`Webhook: Task gefunden - aktualisiere Task ID: ${task.id}`)
-        
-        // Bei actionCreate Events nur Priorität und Status aktualisieren
-        // Bei cardUpdate Events alle Felder aktualisieren
-        // Bei cardLabelCreate Events nur Label aktualisieren
-        const updateData: any = {
-          status: status,
-          priority: priority,
-          label: labelValue || priorityLabel // Verwende Label-Wert oder Priority-Label als Fallback
-        }
-        
-        if (body.event === 'cardUpdate') {
-          // Vollständige Aktualisierung bei cardUpdate
-          updateData.title = card?.name
-          updateData.description = card?.description
-          updateData.deadline = deadline
-          updateData.externalId = card?.id
-        }
-        
-        if (body.event === 'cardLabelCreate' && labelValue) {
-          // Nur Label bei cardLabelCreate Events aktualisieren
-          updateData.label = labelValue
-        }
-        
-        task = await prisma.task.update({
-          where: { id: task.id },
-          data: updateData
-        })
-        console.log(`Webhook: Task aktualisiert - ID: ${task.id}, Event: ${body.event}`)
-      }
-    } catch (dbError) {
-      console.error('Webhook: Datenbank-Fehler:', dbError)
-      console.error('Webhook: Fehler-Details:', {
-        message: dbError instanceof Error ? dbError.message : String(dbError),
-        code: (dbError as any)?.code || 'unknown',
-        stack: dbError instanceof Error ? dbError.stack : undefined
-      })
-      // Weiter ohne Datenbank-Operation
-    }
-
-    // Erfolgreiche Antwort
+    // Erfolgreiche Antwort vorbereiten
     const response: any = {
       message: 'Webhook erfolgreich verarbeitet',
       event: body.event,
@@ -229,6 +161,200 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     }
 
+    // Versuche Datenbank-Operationen mit Supabase
+    let task = null
+    let user = null
+    try {
+        // Prüfe Supabase-Konfiguration
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        
+        if (!supabaseUrl || !supabaseKey) {
+          console.error('Webhook: Supabase-Konfiguration fehlt!')
+          console.error('Webhook: NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Gesetzt' : 'FEHLT')
+          console.error('Webhook: SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? 'Gesetzt' : 'FEHLT')
+          throw new Error('Supabase-Konfiguration unvollständig. Bitte setzen Sie NEXT_PUBLIC_SUPABASE_URL und SUPABASE_SERVICE_ROLE_KEY in .env.local')
+        }
+        
+        // Verwende Supabase-Client mit Service Role Key für Datenbank-Operationen
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        
+        console.log('Webhook: Supabase-Verbindung getestet')
+        console.log('Webhook: Supabase URL:', supabaseUrl)
+        console.log('Webhook: Service Role Key vorhanden:', supabaseKey ? 'Ja' : 'Nein')
+      
+      // User finden oder erstellen
+      let { data: foundUser, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', body.user?.email)
+        .single()
+
+      if (userError || !foundUser) {
+        console.log(`Webhook: User nicht gefunden - erstelle neuen User für E-Mail: ${body.user?.email}`)
+        // Für Webhook-User: Generiere eine UUID als ID (da kein Supabase Auth User)
+        const webhookUserId = uuidv4()
+        
+        const { data: newUser, error: createUserError } = await supabase
+          .from('users')
+          .insert({
+            id: webhookUserId,
+            email: body.user?.email,
+            name: body.user?.name || body.user?.email?.split('@')[0]
+          })
+          .select()
+          .single()
+        
+        if (createUserError) {
+          console.error('Webhook: Fehler beim Erstellen des Users:', createUserError)
+          throw createUserError
+        }
+        
+        user = newUser
+        console.log(`Webhook: Neuer User erstellt - ID: ${user.id}`)
+      } else {
+        user = foundUser
+      }
+
+      // Task finden oder erstellen
+      const { data: existingTask, error: taskFindError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('external_id', card?.id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (taskFindError && taskFindError.code !== 'PGRST116') {
+        console.error('Webhook: Fehler beim Suchen der Task:', taskFindError)
+        console.error('Webhook: Task-Fehler-Details:', {
+          code: taskFindError.code,
+          message: taskFindError.message,
+          details: taskFindError.details,
+          hint: taskFindError.hint
+        })
+        throw taskFindError
+      }
+
+      if (!existingTask) {
+        console.log(`Webhook: Task nicht gefunden - erstelle neue Task für Card: ${card?.name}`)
+        
+        const { data: newTask, error: createTaskError } = await supabase
+          .from('tasks')
+          .insert({
+            id: uuidv4(), // Generiere UUID für Task-ID
+            title: card?.name,
+            description: card?.description || '',
+            status: status,
+            priority: priority,
+            label: labelValue || priorityLabel, // Verwende Label-Wert oder Priority-Label als Fallback
+            deadline: deadline,
+            external_id: card?.id,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+        
+        if (createTaskError) {
+          console.error('Webhook: Fehler beim Erstellen der Task:', createTaskError)
+          throw createTaskError
+        }
+        
+        task = newTask
+        console.log(`Webhook: Neue Task erstellt - ID: ${task.id}`)
+      } else {
+        console.log(`Webhook: Task gefunden - aktualisiere Task ID: ${existingTask.id}`)
+        
+        // Immer alle relevanten Felder aktualisieren
+        const updateData: any = {
+          status: status,
+          priority: priority,
+          label: labelValue || priorityLabel, // Verwende Label-Wert oder Priority-Label als Fallback
+          updated_at: new Date().toISOString() // Aktualisiere Zeitstempel
+        }
+        
+        // Bei cardUpdate Events auch Titel, Beschreibung und Deadline aktualisieren
+        if (body.event === 'cardUpdate') {
+          updateData.title = card?.name
+          updateData.description = card?.description
+          updateData.deadline = deadline
+          updateData.external_id = card?.id
+        }
+        
+        // Bei cardLabelCreate Events nur Label aktualisieren (falls vorhanden)
+        if (body.event === 'cardLabelCreate' && labelValue) {
+          updateData.label = labelValue
+        }
+        
+        console.log(`Webhook: Update-Daten für Task ${existingTask.id}:`, updateData)
+        console.log(`Webhook: Vorherige Priorität: ${existingTask.priority}`)
+        console.log(`Webhook: Neue Priorität: ${updateData.priority}`)
+        console.log(`Webhook: Liste-Name: ${listName}`)
+        console.log(`Webhook: Event-Typ: ${body.event}`)
+        
+        // Zusätzliche Validierung der Prioritäts-Daten
+        if (!updateData.priority || !['Priorität 1', 'Priorität 2', 'Priorität 3'].includes(updateData.priority)) {
+          console.error(`Webhook: Ungültige Priorität: ${updateData.priority}`)
+          console.error(`Webhook: Liste-Name war: ${listName}`)
+          updateData.priority = 'Priorität 2' // Fallback
+        }
+        
+        const { data: updatedTask, error: updateTaskError } = await supabase
+          .from('tasks')
+          .update(updateData)
+          .eq('id', existingTask.id)
+          .select()
+          .single()
+        
+        if (updateTaskError) {
+          console.error('Webhook: Fehler beim Aktualisieren der Task:', updateTaskError)
+          console.error('Webhook: Update-Daten die fehlgeschlagen sind:', updateData)
+          console.error('Webhook: Task-ID die aktualisiert werden sollte:', existingTask.id)
+          console.error('Webhook: Supabase-Fehler-Details:', {
+            code: updateTaskError.code,
+            message: updateTaskError.message,
+            details: updateTaskError.details,
+            hint: updateTaskError.hint
+          })
+          throw updateTaskError
+        }
+        
+        if (!updatedTask) {
+          console.error('Webhook: Keine Task nach Update erhalten - möglicherweise wurde keine Task aktualisiert')
+          console.error('Webhook: Das bedeutet, dass der Update-Befehl fehlgeschlagen ist!')
+          throw new Error('Keine Task nach Update erhalten')
+        }
+        
+        task = updatedTask
+        console.log(`Webhook: Task erfolgreich aktualisiert - ID: ${task.id}, Event: ${body.event}`)
+        console.log(`Webhook: Aktualisierte Priorität: ${task.priority}, Status: ${task.status}`)
+      }
+    } catch (dbError) {
+      console.error('Webhook: Datenbank-Fehler:', dbError)
+      console.error('Webhook: Fehler-Details:', {
+        message: dbError instanceof Error ? dbError.message : String(dbError),
+        code: (dbError as any)?.code || 'unknown',
+        stack: dbError instanceof Error ? dbError.stack : undefined
+      })
+      
+      // Fehler in Response hinzufügen für Debugging
+      response.error = {
+        message: dbError instanceof Error ? dbError.message : String(dbError),
+        code: (dbError as any)?.code || 'unknown',
+        details: dbError
+      }
+      
+      console.log('Webhook: Datenbank-Fehler - Webhook schlägt fehl!')
+      
+      // Fehler weiterleiten statt zu simulieren
+      return NextResponse.json({ 
+        error: 'Datenbank-Fehler beim Verarbeiten des Webhooks',
+        details: dbError instanceof Error ? dbError.message : String(dbError),
+        card: response.card
+      }, { status: 500 })
+    }
+
     // Task-Informationen hinzufügen falls verfügbar
     if (task) {
       response.task = {
@@ -239,14 +365,45 @@ export async function POST(request: NextRequest) {
         label: task.label,
         deadline: task.deadline
       }
+
+      // Echtzeit-Update an Frontend senden
+      try {
+        broadcastUpdate(user.id, {
+          type: 'task_updated',
+          task: {
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            status: task.status,
+            priority: task.priority,
+            label: task.label,
+            deadline: task.deadline,
+            created_at: task.created_at,
+            updated_at: task.updated_at,
+            external_id: task.external_id,
+            user_id: task.user_id
+          },
+          event: body.event,
+          timestamp: new Date().toISOString()
+        })
+        console.log('SSE: Echtzeit-Update gesendet für Task:', task.id)
+      } catch (sseError) {
+        console.error('SSE: Fehler beim Senden des Echtzeit-Updates:', sseError)
+        // SSE-Fehler soll den Webhook nicht zum Scheitern bringen
+      }
     }
 
     return NextResponse.json(response, { status: 200 })
 
   } catch (error) {
     console.error('Webhook-Fehler:', error)
+    console.error('Webhook-Fehler-Details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json({ 
-      error: 'Interner Server-Fehler' 
+      error: 'Interner Server-Fehler',
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

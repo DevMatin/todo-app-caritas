@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
+import { getAuthenticatedUser } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { sendN8nEvent, createTaskData, getChangedFields } from '@/lib/webhook'
 
@@ -9,30 +9,20 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession()
+    const authResult = await getAuthenticatedUser()
     
-    // TEMPORÄR: Verwende Test-User wenn keine Session vorhanden
-    let userEmail = session?.user?.email
+    if (!authResult) {
+      console.log('API /tasks/[id] GET - Keine authentifizierte Session')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    if (!userEmail) {
-      console.log('API /tasks/[id] GET - Keine Session, verwende Test-User')
-      userEmail = 'faal@caritas-erlangen.de' // Test-User E-Mail
-    }
-
-    // User-ID aus der Datenbank holen basierend auf E-Mail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail }
-    })
-
-    if (!user) {
-      console.log('API /tasks/[id] GET - User nicht in Datenbank gefunden für:', userEmail)
-      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
-    }
+    const { dbUser } = authResult
+    console.log('API /tasks/[id] GET - Authentifizierter User:', dbUser.email)
 
     const task = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: user.id 
+        userId: dbUser.id 
       }
     })
 
@@ -53,25 +43,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession()
+    const authResult = await getAuthenticatedUser()
     
-    // TEMPORÄR: Verwende Test-User wenn keine Session vorhanden
-    let userEmail = session?.user?.email
+    if (!authResult) {
+      console.log('API /tasks/[id] PUT - Keine authentifizierte Session')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    if (!userEmail) {
-      console.log('API /tasks/[id] PUT - Keine Session, verwende Test-User')
-      userEmail = 'faal@caritas-erlangen.de' // Test-User E-Mail
-    }
-
-    // User-ID aus der Datenbank holen basierend auf E-Mail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail }
-    })
-
-    if (!user) {
-      console.log('API /tasks/[id] PUT - User nicht in Datenbank gefunden für:', userEmail)
-      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
-    }
+    const { dbUser } = authResult
+    console.log('API /tasks/[id] PUT - Authentifizierter User:', dbUser.email)
 
     const body = await request.json()
     
@@ -79,7 +59,7 @@ export async function PUT(
     const existingTask = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: user.id 
+        userId: dbUser.id 
       }
     })
 
@@ -97,7 +77,7 @@ export async function PUT(
     })
 
     // Events an n8n senden (asynchron, nicht blockierend)
-    const taskData = createTaskData(task, user.email)
+    const taskData = createTaskData(task, dbUser.email)
     
     // Webhooks im Hintergrund senden (nicht await verwenden)
     sendN8nEvent('taskUpdate', taskData, {
@@ -130,31 +110,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession()
+    const authResult = await getAuthenticatedUser()
     
-    // TEMPORÄR: Verwende Test-User wenn keine Session vorhanden
-    let userEmail = session?.user?.email
+    if (!authResult) {
+      console.log('API /tasks/[id] DELETE - Keine authentifizierte Session')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    if (!userEmail) {
-      console.log('API /tasks/[id] DELETE - Keine Session, verwende Test-User')
-      userEmail = 'faal@caritas-erlangen.de' // Test-User E-Mail
-    }
-
-    // User-ID aus der Datenbank holen basierend auf E-Mail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail }
-    })
-
-    if (!user) {
-      console.log('API /tasks/[id] DELETE - User nicht in Datenbank gefunden für:', userEmail)
-      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
-    }
+    const { dbUser } = authResult
+    console.log('API /tasks/[id] DELETE - Authentifizierter User:', dbUser.email)
 
     // Prüfen ob Task existiert und dem User gehört
     const existingTask = await prisma.task.findFirst({
       where: { 
         id: params.id,
-        userId: user.id 
+        userId: dbUser.id 
       }
     })
 
@@ -163,7 +133,7 @@ export async function DELETE(
     }
 
     // Task-Daten für Event vor dem Löschen erstellen
-    const taskData = createTaskData(existingTask, user.email)
+    const taskData = createTaskData(existingTask, dbUser.email)
 
     await prisma.task.delete({
       where: { id: params.id }

@@ -1,8 +1,7 @@
 'use client'
 
-import { SessionProvider } from 'next-auth/react'
-
+// NextAuth SessionProvider entfernt - Supabase Auth wird direkt in den Komponenten verwendet
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return <SessionProvider>{children}</SessionProvider>
+  return <>{children}</>
 }
 

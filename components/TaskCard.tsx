@@ -75,8 +75,10 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   }
 
   // Datum formatieren
-  const formatDate = (date: string | Date) => {
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return 'Unbekannt'
     const dateObj = typeof date === 'string' ? new Date(date) : date
+    if (isNaN(dateObj.getTime())) return 'Ungültiges Datum'
     return dateObj.toLocaleDateString('de-DE', {
       day: '2-digit',
       month: '2-digit',
@@ -87,8 +89,11 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
   }
 
   // Deadline formatieren
-  const formatDeadline = (deadline: string | Date) => {
+  const formatDeadline = (deadline: string | Date | null | undefined) => {
+    if (!deadline) return { text: 'Keine Deadline', color: 'text-gray-400' }
     const deadlineDate = typeof deadline === 'string' ? new Date(deadline) : deadline
+    if (isNaN(deadlineDate.getTime())) return { text: 'Ungültige Deadline', color: 'text-gray-400' }
+    
     const now = new Date()
     const diffDays = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     
@@ -224,12 +229,12 @@ export function TaskCard({ task, onEdit, onUpdate, onDelete }: TaskCardProps) {
         <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
           <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            Erstellt: {formatDate(task.createdAt)}
+            Erstellt: {formatDate(task.created_at || task.createdAt)}
           </div>
-          {task.updatedAt !== task.createdAt && (
+          {(task.updated_at || task.updatedAt) !== (task.created_at || task.createdAt) && (
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              Aktualisiert: {formatDate(task.updatedAt)}
+              Aktualisiert: {formatDate(task.updated_at || task.updatedAt)}
             </div>
           )}
         </div>

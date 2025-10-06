@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,12 +17,15 @@ export default function RegisterPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const router = useRouter()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setMessage('')
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwörter stimmen nicht überein')
@@ -36,26 +40,34 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: formData.name || undefined,
-        }),
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name || null,
+          }
+        }
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Fehler beim Registrieren')
+      if (error) {
+        console.log('Registrierungs-Fehler:', error.message)
+        if (error.message.includes('User already registered')) {
+          setError('Ein Benutzer mit dieser E-Mail existiert bereits')
+        } else {
+          setError(error.message)
+        }
       } else {
-        router.push('/login?message=Registrierung erfolgreich')
+        console.log('Registrierung erfolgreich:', data.user?.email)
+        setMessage('Registrierung erfolgreich! Sie können sich jetzt anmelden.')
+        
+        // Nach 2 Sekunden zur Login-Seite weiterleiten
+        setTimeout(() => {
+          router.push('/login?message=Registrierung erfolgreich')
+        }, 2000)
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Registrierungs-Fehler:', error)
       setError('Ein Fehler ist aufgetreten')
     } finally {
       setIsLoading(false)
@@ -126,6 +138,11 @@ export default function RegisterPage() {
             {error && (
               <div className="text-red-600 text-sm text-center">
                 {error}
+              </div>
+            )}
+            {message && (
+              <div className="text-green-600 text-sm text-center">
+                {message}
               </div>
             )}
             <Button

@@ -1,38 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { prisma } from '@/lib/prisma'
-import { Task } from '@prisma/client'
+import { getAuthenticatedUser } from '@/lib/auth-helpers'
+import { createClient } from '@supabase/supabase-js'
 import { sendN8nEvent, createTaskData } from '@/lib/webhook'
 
 // GET /api/tasks - Alle Aufgaben des eingeloggten Users abrufen
 export async function GET() {
   try {
-    const session = await getServerSession()
+    const authResult = await getAuthenticatedUser()
     
-    console.log('API /tasks - Session:', session) // Debug-Log
-    
-    // TEMPORÄR: Verwende Test-User wenn keine Session vorhanden
-    let userEmail = session?.user?.email
-    
-    if (!userEmail) {
-      console.log('API /tasks - Keine Session, verwende Test-User')
-      userEmail = 'faal@caritas-erlangen.de' // Test-User E-Mail
+    if (!authResult) {
+      console.log('API /tasks - Keine authentifizierte Session')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const { dbUser } = authResult
+    console.log('API /tasks - Authentifizierter User:', dbUser.email)
 
-    // User-ID aus der Datenbank holen basierend auf E-Mail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail }
-    })
+    // Verwende Supabase-Client für Datenbank-Operationen
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    if (!user) {
-      console.log('API /tasks - User nicht in Datenbank gefunden für:', userEmail)
-      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
+    const { data: tasks, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', dbUser.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Supabase-Fehler beim Laden der Aufgaben:', error)
+      throw error
     }
-
-    const tasks = await prisma.task.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
-    })
 
     console.log('API /tasks - Gefundene Aufgaben:', tasks.length) // Debug-Log
     return NextResponse.json(tasks)
@@ -45,37 +44,42 @@ export async function GET() {
 // POST /api/tasks - Neue Aufgabe erstellen
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession()
+    const authResult = await getAuthenticatedUser()
     
-    // TEMPORÄR: Verwende Test-User wenn keine Session vorhanden
-    let userEmail = session?.user?.email
+    if (!authResult) {
+      console.log('API /tasks POST - Keine authentifizierte Session')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     
-    if (!userEmail) {
-      console.log('API /tasks POST - Keine Session, verwende Test-User')
-      userEmail = 'faal@caritas-erlangen.de' // Test-User E-Mail
-    }
-
-    // User-ID aus der Datenbank holen basierend auf E-Mail
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail }
-    })
-
-    if (!user) {
-      console.log('API /tasks POST - User nicht in Datenbank gefunden für:', userEmail)
-      return NextResponse.json({ error: 'Benutzer nicht gefunden' }, { status: 404 })
-    }
+    const { dbUser } = authResult
+    console.log('API /tasks POST - Authentifizierter User:', dbUser.email)
 
     const body = await request.json()
     
-    const task = await prisma.task.create({
-      data: {
+    // Verwende Supabase-Client für Datenbank-Operationen
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .insert({
         ...body,
-        userId: user.id,
-      }
-    })
+        user_id: dbUser.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Supabase-Fehler beim Erstellen der Aufgabe:', error)
+      throw error
+    }
 
     // Event an n8n senden
-    const taskData = createTaskData(task, user.email)
+    const taskData = createTaskData(task, dbUser.email)
     await sendN8nEvent('taskCreate', taskData)
 
     return NextResponse.json(task, { status: 201 })
