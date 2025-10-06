@@ -6,6 +6,9 @@ import { broadcastUpdate } from '@/lib/sse'
 // Force Node.js runtime to avoid Edge Runtime issues with Supabase
 export const runtime = 'nodejs'
 
+// In-Memory Store für verarbeitete Webhooks (Idempotenz)
+const processedWebhooks = new Set<string>()
+
 // GET /api/webhooks/n8n - Health Check
 export async function GET(request: NextRequest) {
   return NextResponse.json({ 
@@ -30,6 +33,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Webhook empfangen:', { event: body.event })
     console.log('Webhook: VOLLSTÄNDIGE n8n-DATEN:', JSON.stringify(body, null, 2))
+    
+    // Idempotenz-Prüfung: Erstelle einen eindeutigen Hash für diese Webhook-Anfrage
+    const webhookId = `${body.event}-${body.card?.id || body.data?.cardId}-${body.timestamp || new Date().toISOString()}`
+    console.log('Webhook: Eindeutige ID für Idempotenz:', webhookId)
+    
+    // Prüfe ob dieser Webhook bereits verarbeitet wurde
+    if (processedWebhooks.has(webhookId)) {
+      console.log('Webhook: Bereits verarbeitet - ignoriere Duplikat:', webhookId)
+      return NextResponse.json({ 
+        message: 'Webhook bereits verarbeitet (Duplikat ignoriert)',
+        webhookId: webhookId,
+        timestamp: new Date().toISOString()
+      }, { status: 200 })
+    }
+    
+    // Markiere Webhook als verarbeitet
+    processedWebhooks.add(webhookId)
+    
+    // Cleanup: Entferne alte Einträge (älter als 1 Stunde)
+    if (processedWebhooks.size > 1000) {
+      console.log('Webhook: Cleanup der Idempotenz-Liste (zu viele Einträge)')
+      processedWebhooks.clear()
+    }
     
     // Zusätzliche Debugging-Informationen
     console.log('Webhook: Body-Keys:', Object.keys(body))
